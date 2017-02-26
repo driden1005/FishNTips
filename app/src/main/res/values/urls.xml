@@ -1,0 +1,5 @@
+<resources>
+    <string name="url_bite_times">https://www.bitetimes.com</string>
+    <string name="url_tidestation">/phpsqlsearch_genxml.php</string>
+    <string name="url_data">/cgi-bin/worlddata.cgi</string>
+</resources>

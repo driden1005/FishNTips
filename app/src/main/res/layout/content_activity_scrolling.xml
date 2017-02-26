@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     app:layout_behavior="@string/appbar_scrolling_view_behavior"
-    tools:context="io.driden.fishtips.Map.ScrollingActivity"
+    tools:context="io.driden.fishtips.ui.activity._ScrollingActivity"
     >
 
     <android.support.design.widget.AppBarLayout

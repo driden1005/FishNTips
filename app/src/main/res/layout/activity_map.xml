@@ -4,7 +4,7 @@
     android:name="com.google.android.gms.maps.SupportMapFragment"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="io.driden.fishtips.Map.MapActivity">
+    tools:context="io.driden.fishtips.ui.activity.FishingMapActivity">
 
     <RelativeLayout
         android:layout_width="match_parent"
@@ -67,7 +67,7 @@
 
 
     <android.support.design.widget.FloatingActionButton
-        android:id="@+id/fab1"
+        android:id="@+id/fabSaveBtn"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"

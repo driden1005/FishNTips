@@ -301,7 +301,7 @@ public class AnchorSheetBehavior<V extends View> extends CoordinatorLayout.Behav
             mVelocityTracker = VelocityTracker.obtain();
         }
         mVelocityTracker.addMovement(event);
-        // The ViewDragHelper tries to capture only the top-most View. We have to explicitly tell it
+        // The ViewDragHelper tries to capture only the top-most BaseView. We have to explicitly tell it
         // to capture the bottom sheet in case it is not captured and the touch slop is passed.
         if (action == MotionEvent.ACTION_MOVE && !mIgnoreEvents) {
             if (Math.abs(mInitialY - event.getY()) > mViewDragHelper.getTouchSlop()) {

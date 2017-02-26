@@ -1,0 +1,12 @@
+<resources>
+    <string name="key_preference_NETWORK">PREF_NETWORK</string>
+    <string name="key_cookie">K_COOKIE</string>
+    <string name="key_cookie_time">K_COOKIE_TIME</string>
+    <string name="key_fishing_data">K_FISHING_DATA</string>
+
+    <string name="intent_filter_network">io.driden.fishtips.filter.network</string>
+    <string name="intent_action_send_cookie">io.driden.fishtips.COOKIE</string>
+    <string name="intent_action_send_data">io.driden.fishtips.DATA</string>
+
+
+</resources>

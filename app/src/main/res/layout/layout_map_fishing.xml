@@ -1,0 +1,46 @@
+<android.support.design.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/coordinator"
+    android:name="com.google.android.gms.maps.SupportMapFragment"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="io.driden.fishtips.ui.activity.FishingMapActivity">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <fragment
+            android:id="@+id/map"
+            android:name="com.google.android.gms.maps.SupportMapFragment"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+    </RelativeLayout>
+
+    <android.support.design.widget.FloatingActionButton
+        android:id="@+id/fabSaveBtn"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="@dimen/fab_margin"
+        android:src="@drawable/ic_check_white_24px"
+        android:visibility="invisible"
+        app:layout_anchorGravity="end" />
+    <!--app:layout_anchor="@id/design_bottom_sheet"-->
+
+
+    <RelativeLayout
+        android:id="@+id/design_bottom_sheet"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#ff43"
+        app:behavior_hideable="true"
+        app:elevation="6dp"
+        app:layout_behavior="@string/bottom_sheet_behavior">
+
+
+        <include layout="@layout/bottom_sheet_contents" />
+
+    </RelativeLayout>
+
+</android.support.design.widget.CoordinatorLayout>
