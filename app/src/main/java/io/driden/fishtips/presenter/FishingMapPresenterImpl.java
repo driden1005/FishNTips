@@ -30,6 +30,7 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.util.Date;
+import java.util.List;
 import java.util.TimeZone;
 
 import javax.inject.Inject;
@@ -39,12 +40,14 @@ import io.driden.fishtips.R;
 import io.driden.fishtips.app.App;
 import io.driden.fishtips.common.CommonUtils;
 import io.driden.fishtips.model.FishingData;
-import io.driden.fishtips.model.FishingDataListParcelable;
+import io.driden.fishtips.model.FishingDataArrayParcelable;
+import io.driden.fishtips.model.RealmFishingData;
 import io.driden.fishtips.service.NetworkService;
 import io.driden.fishtips.service.NetworkServiceInterface;
 import io.driden.fishtips.service.ServiceInterface;
 import io.driden.fishtips.util.MapProvider;
 import io.driden.fishtips.view.FishingMapView;
+import io.realm.Realm;
 
 public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapView> {
 
@@ -57,12 +60,16 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
     @Inject
     DisplayMetrics metrics;
 
+    @Inject
+    Realm realm;
+
     FishingMapView view;
 
     MapProvider mapProvider;
 
     NetworkServiceInterface networkService;
 
+    private List<Marker> markerList;
     private Marker unsavedMarker;
 
     private Activity activity;
@@ -71,6 +78,8 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
     private BottomSheetBehavior behavior;
 
     private boolean isServiceBound = false;
+
+    private List<RealmFishingData> realmDatas;
 
     public FishingMapPresenterImpl(Activity activity) {
         this.activity = activity;
@@ -86,6 +95,39 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
     @Override
     public void detachView(FishingMapView view) {
         this.view = view;
+    }
+
+    /**
+     * Save the unsaved marker into the Realm DB.
+     *
+     * @param latLng
+     * @param fishingDatas
+     */
+    @Override
+    public void saveMarker(LatLng latLng, FishingData[] fishingDatas) {
+//        realmDatas = realm.where(RealmFishingData.class).findAll();
+//
+//        if (realmDatas != null && realmDatas.size() >= 20) {
+//            return;
+//        }
+//
+//        RealmFishingData data = new RealmFishingData();
+//        data.setIndex(realmDatas != null ? realmDatas.size() : 0);
+//        data.setLat(latLng.latitude);
+//        data.setLng(latLng.longitude);
+//        data.setFishingDatas(fishingDatas);
+//
+//        realm.beginTransaction();
+//        realm.insertOrUpdate(realmDatas);
+//        realm.commitTransaction();
+//
+//        // todo set title and set tag to indentify it was saved.
+////        unsavedMarker.setTitle();
+////        unsavedMarker.setTitle();
+//
+//        markerList.add(unsavedMarker);
+
+
     }
 
     @Override
@@ -236,18 +278,18 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
      * @param date
      * @param timeZone
      */
-    private void getMarkerInfo(LatLng latLng, int day, Date date, TimeZone timeZone) {
+    private void getMarkerInfo(final LatLng latLng, int day, Date date, TimeZone timeZone) {
 
         ServiceInterface.ServiceCallback callback = new ServiceInterface.ServiceCallback() {
             @Override
             public void onSuccess(Bundle bundle) {
                 view.setLoadingBottom(false);
 
-                FishingDataListParcelable parcel = bundle.getParcelable("FISHING_DATA");
+                FishingDataArrayParcelable parcel = bundle.getParcelable("FISHING_DATA");
                 FishingData[] dataArray = parcel.getDataArray();
 
                 // set data into the bottom sheet
-                view.addBottomSheetContents(dataArray);
+                view.addBottomSheetContents(latLng, dataArray);
             }
 
             @Override

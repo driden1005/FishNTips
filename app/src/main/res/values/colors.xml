@@ -5,4 +5,11 @@
     <color name="colorAccent">#FF4081</color>
 
     <color name="black_overlay">#66000000</color>
+
+    <color name="bite_red">#f00c00</color>
+    <color name="bite_orange">#fab161</color>
+    <color name="bite_green">#40cd0a</color>
+    <color name="bite_cyan">#00f0f0</color>
+    <color name="bite_black">#003737</color>
+
 </resources>

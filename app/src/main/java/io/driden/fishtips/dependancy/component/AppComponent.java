@@ -10,6 +10,7 @@ import io.driden.fishtips.presenter.FishingMapPresenterImpl;
 import io.driden.fishtips.service.NetworkService;
 import io.driden.fishtips.tasks.CookieRunner;
 import io.driden.fishtips.tasks.MarkerInfoRunner;
+import io.driden.fishtips.view.BottomItemView;
 
 @Singleton
 @Component(modules = {AppModule.class, DataModule.class, NetModule.class})
@@ -21,4 +22,6 @@ public interface AppComponent {
     void inject(CookieRunner cookieRunner);
 
     void inject(MarkerInfoRunner markerInfoRunner);
+
+    void inject(BottomItemView bottomItemView);
 }

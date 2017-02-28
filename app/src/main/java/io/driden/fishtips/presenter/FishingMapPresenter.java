@@ -8,6 +8,8 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 
+import io.driden.fishtips.model.FishingData;
+
 public interface FishingMapPresenter<T> extends
         GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener,
@@ -50,4 +52,6 @@ public interface FishingMapPresenter<T> extends
     void attachView(T view);
 
     void detachView(T view);
+
+    void saveMarker(LatLng latLng, FishingData[] fishingDatas);
 }

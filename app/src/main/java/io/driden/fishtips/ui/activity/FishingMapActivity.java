@@ -6,13 +6,14 @@ import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.design.widget.CoordinatorLayout;
 import android.support.design.widget.FloatingActionButton;
+import android.support.design.widget.Snackbar;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
-import android.widget.TextView;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.GoogleMap;
@@ -24,7 +25,6 @@ import com.google.android.gms.maps.model.Marker;
 import javax.inject.Inject;
 
 import butterknife.BindView;
-import butterknife.ButterKnife;
 import io.driden.fishtips.R;
 import io.driden.fishtips.app.App;
 import io.driden.fishtips.model.FishingData;
@@ -32,6 +32,7 @@ import io.driden.fishtips.presenter.FishingMapPresenter;
 import io.driden.fishtips.service.NetworkService;
 import io.driden.fishtips.util.MainThreadSpec;
 import io.driden.fishtips.util.MapProvider;
+import io.driden.fishtips.view.BottomItemView;
 import io.driden.fishtips.view.FishingMapView;
 import me.panavtec.threaddecoratedview.views.ViewInjector;
 
@@ -137,60 +138,29 @@ public class FishingMapActivity extends BaseActivity implements FishingMapView
     }
 
     @Override
-    public void addBottomSheetContents(FishingData[] dataArray) {
+    public void addBottomSheetContents(final LatLng latLng, final FishingData[] dataArray) {
 
         for (int i = 0; i < dataArray.length; i++) {
 
             FishingData data = dataArray[i];
 
-            View infoItem = LayoutInflater.from(this).inflate(R.layout.bite_info_item, null);
-            TextView infoDate = ButterKnife.findById(infoItem, R.id.infoDate);
-            TextView infoSunrise = ButterKnife.findById(infoItem, R.id.infoSunrise);
-            TextView infoSunset = ButterKnife.findById(infoItem, R.id.infoSunset);
-            TextView infoMoonrise = ButterKnife.findById(infoItem, R.id.infoMoonrise);
-            TextView infoMoonset = ButterKnife.findById(infoItem, R.id.infoMoonset);
-            TextView infoMajor1 = ButterKnife.findById(infoItem, R.id.infoMajor1);
-            TextView infoMajor2 = ButterKnife.findById(infoItem, R.id.infoMajor2);
-            TextView infoMinor1 = ButterKnife.findById(infoItem, R.id.infoMinor1);
-            TextView infoMinor2 = ButterKnife.findById(infoItem, R.id.infoMinor2);
-            TextView infoTideStation = ButterKnife.findById(infoItem, R.id.infoTideStation);
-            TextView infoTide1 = ButterKnife.findById(infoItem, R.id.infoTide1);
-            TextView infoTide2 = ButterKnife.findById(infoItem, R.id.infoTide2);
-            TextView infoTide3 = ButterKnife.findById(infoItem, R.id.infoTide3);
-            TextView infoTide4 = ButterKnife.findById(infoItem, R.id.infoTide4);
+            BottomItemView bottomItemView = new BottomItemView(getApplicationContext());
+            bottomItemView.setData(data);
 
-            ImageView infoSun = ButterKnife.findById(infoItem, R.id.infoSun);
-            ImageView infoMoon = ButterKnife.findById(infoItem, R.id.infoMoon);
-
-            infoDate.setText(data.getDate());
-            infoSunrise.setText(data.getSunrise());
-            infoSunset.setText(data.getSunset());
-            infoMoonrise.setText(data.getMoonrise());
-            infoMoonset.setText(data.getMoonset());
-            infoMajor1.setText(data.getMajor1());
-            infoMajor2.setText(data.getMajor2());
-            infoMinor1.setText(data.getMinor1());
-            infoMinor2.setText(data.getMinor2());
-            infoTideStation.setText(data.getTidestation());
-
-            Log.d(TAG, "addBottomSheetContents: tide::: " + data.getTide());
-
-            String[] infoTides = data.getTide().split("<br>");
-
-            try {
-                infoTide1.setText(infoTides[0].trim());
-                infoTide3.setText(infoTides[1].trim());
-
-                infoTide2.setText(infoTides[2].trim());
-                infoTide4.setText(infoTides[3].trim());
-            }catch (ArrayIndexOutOfBoundsException e){
-                e.printStackTrace();
-            }
-
-
-            ((ViewGroup) itemContainer).addView(infoItem, i);
+            ((ViewGroup) itemContainer).addView(bottomItemView, i);
 
         }
+
+        Animation fabForward = AnimationUtils.loadAnimation(getApplicationContext(), R.anim.fab_forward);
+
+        fabSaveBtn.startAnimation(fabForward);
+
+        fabSaveBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                presenter.saveMarker(latLng, dataArray);
+            }
+        });
     }
 
     // Loading progress bar in the bottom sheet view
@@ -210,6 +180,7 @@ public class FishingMapActivity extends BaseActivity implements FishingMapView
 
     @Override
     public void setFabBottomVisibilty(boolean isVisible) {
+
         if (isVisible) {
             CoordinatorLayout.LayoutParams p = (CoordinatorLayout.LayoutParams) fabSaveBtn.getLayoutParams();
             p.setAnchorId(R.id.design_bottom_sheet);
@@ -217,6 +188,7 @@ public class FishingMapActivity extends BaseActivity implements FishingMapView
             fabSaveBtn.setLayoutParams(p);
             fabSaveBtn.show();
         } else {
+            fabSaveBtn.clearAnimation();
             fabSaveBtn.setVisibility(View.INVISIBLE);
             CoordinatorLayout.LayoutParams p = (CoordinatorLayout.LayoutParams) fabSaveBtn.getLayoutParams();
             p.setAnchorId(View.NO_ID);
@@ -226,8 +198,13 @@ public class FishingMapActivity extends BaseActivity implements FishingMapView
 
     @Override
     public void showToast(final String message) {
-        Toast.makeText(FishingMapActivity.this, message, Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
         setLoadingBottom(false);
+    }
+
+    public void showSnackBar(String message) {
+        Snackbar.make(bottomSheet, message, Snackbar.LENGTH_LONG).show();
+        ;
     }
 
     @Override

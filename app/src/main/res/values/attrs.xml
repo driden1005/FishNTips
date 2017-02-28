@@ -14,4 +14,8 @@
         <attr name="hideable" format="boolean" />
     </declare-styleable>
 
+    <declare-styleable name="MoonView">
+        <attr name="starDate" format="string" />
+    </declare-styleable>
+
 </resources>

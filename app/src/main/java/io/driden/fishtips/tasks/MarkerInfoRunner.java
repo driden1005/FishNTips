@@ -24,7 +24,7 @@ import io.driden.fishtips.R;
 import io.driden.fishtips.api.BiteTimesAPI;
 import io.driden.fishtips.app.App;
 import io.driden.fishtips.model.FishingData;
-import io.driden.fishtips.model.FishingDataListParcelable;
+import io.driden.fishtips.model.FishingDataArrayParcelable;
 import io.driden.fishtips.model.MarkersTag;
 import io.driden.fishtips.service.ServiceInterface;
 import io.driden.fishtips.util.HttpProvider;
@@ -147,9 +147,11 @@ public class MarkerInfoRunner implements Runnable {
 
             for (int i = 0; i < days; i++) {
                 dataArray[i] = datas.get(Integer.toString(i));
+                dataArray[i].setLat(latLng.latitude);
+                dataArray[i].setLng(latLng.longitude);
             }
 
-            FishingDataListParcelable dataParcel = new FishingDataListParcelable();
+            FishingDataArrayParcelable dataParcel = new FishingDataArrayParcelable();
             dataParcel.setDataArray(dataArray);
 
             Bundle bundle = new Bundle();

@@ -3,15 +3,15 @@ package io.driden.fishtips.model;
 import android.os.Parcel;
 import android.os.Parcelable;
 
-public class FishingDataListParcelable implements Parcelable {
+public class FishingDataArrayParcelable implements Parcelable {
 
     private FishingData[] dataArray;
 
-    public FishingDataListParcelable(){
+    public FishingDataArrayParcelable(){
 
     }
 
-    protected FishingDataListParcelable(Parcel in) {
+    protected FishingDataArrayParcelable(Parcel in) {
         dataArray = in.createTypedArray(FishingData.CREATOR);
     }
 
@@ -25,15 +25,15 @@ public class FishingDataListParcelable implements Parcelable {
         return 0;
     }
 
-    public static final Creator<FishingDataListParcelable> CREATOR = new Creator<FishingDataListParcelable>() {
+    public static final Creator<FishingDataArrayParcelable> CREATOR = new Creator<FishingDataArrayParcelable>() {
         @Override
-        public FishingDataListParcelable createFromParcel(Parcel in) {
-            return new FishingDataListParcelable(in);
+        public FishingDataArrayParcelable createFromParcel(Parcel in) {
+            return new FishingDataArrayParcelable(in);
         }
 
         @Override
-        public FishingDataListParcelable[] newArray(int size) {
-            return new FishingDataListParcelable[size];
+        public FishingDataArrayParcelable[] newArray(int size) {
+            return new FishingDataArrayParcelable[size];
         }
     };
 

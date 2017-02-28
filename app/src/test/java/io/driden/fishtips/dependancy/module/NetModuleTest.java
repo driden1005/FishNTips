@@ -132,7 +132,7 @@ public class NetModuleTest {
                 .setType(MultipartBody.FORM)
                 .addFormDataPart("latdeg", "-37.973502")
                 .addFormDataPart("lngdeg", "174.848778")
-                .addFormDataPart("numdays", "2")
+                .addFormDataPart("numdays", "30")
                 .addFormDataPart("tidestation", list.get(0).getName())
                 .addFormDataPart("tzone", "Pacific/Auckland")
                 .addFormDataPart("date_time", "04-Feb-2017")
@@ -153,6 +153,35 @@ public class NetModuleTest {
         System.out.println("---------------------------------------------------------------");
 
         System.out.println(response4.body().string());
+
+
+
+    }
+
+    @Test
+    public void newTest() throws IOException {
+
+        // Get Cookie
+        Request request = new Request.Builder().url(baseUrl).build();
+        okhttp3.Response response = client.newCall(request).execute();
+
+        List<HttpCookie> cookies = HttpCookie.parse(response.headers().get("Set-Cookie"));
+
+        String cookieStr = "";
+
+        for (HttpCookie cookie : cookies) {
+            if ("PHPSESSID".equals(cookie.getName())) {
+                cookieStr = cookie.toString();
+            }
+        }
+
+        System.out.println(cookieStr);
+
+        // https://futurestud.io/tutorials/retrofit-add-custom-request-header
+        // http://gun0912.tistory.com/50
+        //ToDo 쿠키 만료일 검증해서 갱신하는 로직 생성하기
+
+        final String finalCookieStr = cookieStr;
 
 
         /**
@@ -194,22 +223,18 @@ public class NetModuleTest {
         Call<ResponseBody> callData = testAPI.getData(
                 -39.326664,
                 175.020783,
-                2,
+                5,
                 "Raglan, New Zealand",
                 "Pacific/Auckland",
-                "04-Feb-2017"
+                "04-Mar-2017"
         );
 
 
         Response<ResponseBody> resultData = callData.execute();
         Response<ResponseBody> resultTideStation = callTide.execute();
 
-        System.out.println("xxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-
         System.out.println(resultTideStation.body().string());
         System.out.println(resultData.body().string());
-
-        System.out.println("xxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
 
         Retrofit re = new Retrofit.Builder()
                 .baseUrl(baseUrl)

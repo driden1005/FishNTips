@@ -38,6 +38,7 @@ public class FishingData implements Parcelable {
 
     private double lat;
     private double lng;
+    private int index;
 
 
     protected FishingData(Parcel in) {
@@ -65,6 +66,41 @@ public class FishingData implements Parcelable {
         maj2color = in.readString();
         lat = in.readDouble();
         lng = in.readDouble();
+        index = in.readInt();
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeString(tidestation);
+        dest.writeString(moonculmination);
+        dest.writeString(moonset);
+        dest.writeString(moonunderfoot);
+        dest.writeString(moonrise);
+        dest.writeString(sunset);
+        dest.writeString(sunrise);
+        dest.writeString(moonday);
+        dest.writeString(date);
+        dest.writeString(tide);
+        dest.writeString(minor1);
+        dest.writeString(minor1rating);
+        dest.writeString(min1color);
+        dest.writeString(minor2);
+        dest.writeString(minor2rating);
+        dest.writeString(min2color);
+        dest.writeString(major1);
+        dest.writeString(major1rating);
+        dest.writeString(maj1color);
+        dest.writeString(major2);
+        dest.writeString(major2rating);
+        dest.writeString(maj2color);
+        dest.writeDouble(lat);
+        dest.writeDouble(lng);
+        dest.writeInt(index);
+    }
+
+    @Override
+    public int describeContents() {
+        return 0;
     }
 
     public static final Creator<FishingData> CREATOR = new Creator<FishingData>() {
@@ -271,36 +307,4 @@ public class FishingData implements Parcelable {
         this.maj2color = maj2color;
     }
 
-    @Override
-    public int describeContents() {
-        return 0;
-    }
-
-    @Override
-    public void writeToParcel(Parcel dest, int flags) {
-        dest.writeString(tidestation);
-        dest.writeString(moonculmination);
-        dest.writeString(moonset);
-        dest.writeString(moonunderfoot);
-        dest.writeString(moonrise);
-        dest.writeString(sunset);
-        dest.writeString(sunrise);
-        dest.writeString(moonday);
-        dest.writeString(date);
-        dest.writeString(tide);
-        dest.writeString(minor1);
-        dest.writeString(minor1rating);
-        dest.writeString(min1color);
-        dest.writeString(minor2);
-        dest.writeString(minor2rating);
-        dest.writeString(min2color);
-        dest.writeString(major1);
-        dest.writeString(major1rating);
-        dest.writeString(maj1color);
-        dest.writeString(major2);
-        dest.writeString(major2rating);
-        dest.writeString(maj2color);
-        dest.writeDouble(lat);
-        dest.writeDouble(lng);
-    }
 }
