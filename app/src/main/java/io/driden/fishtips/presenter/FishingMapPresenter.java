@@ -49,9 +49,15 @@ public interface FishingMapPresenter<T> extends
 
     void animateMyLastLocation();
 
+    void getSavedMarkers();
+
     void attachView(T view);
 
     void detachView(T view);
 
     void saveMarker(LatLng latLng, FishingData[] fishingDatas);
+
+    void setSavedMarkersVisibility(boolean isVisible);
+
+    void getSavedFishingData(Object tag);
 }

@@ -27,7 +27,6 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.Projection;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
-import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.util.Date;
 import java.util.List;
@@ -42,12 +41,15 @@ import io.driden.fishtips.common.CommonUtils;
 import io.driden.fishtips.model.FishingData;
 import io.driden.fishtips.model.FishingDataArrayParcelable;
 import io.driden.fishtips.model.RealmFishingData;
+import io.driden.fishtips.model.RealmLatLng;
 import io.driden.fishtips.service.NetworkService;
 import io.driden.fishtips.service.NetworkServiceInterface;
 import io.driden.fishtips.service.ServiceInterface;
 import io.driden.fishtips.util.MapProvider;
 import io.driden.fishtips.view.FishingMapView;
 import io.realm.Realm;
+import io.realm.RealmList;
+import io.realm.RealmResults;
 
 public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapView> {
 
@@ -59,33 +61,44 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
     SharedPreferences preferences;
     @Inject
     DisplayMetrics metrics;
-
     @Inject
     Realm realm;
 
-    FishingMapView view;
+    private MapProvider mapProvider;
 
-    MapProvider mapProvider;
+    private NetworkServiceInterface networkService;
 
-    NetworkServiceInterface networkService;
-
-    private List<Marker> markerList;
+    private FishingMapView view;
+    private long interval = 0;
     private Marker unsavedMarker;
-
+    private List<Marker> savedMarkers;
+    private RealmResults<RealmLatLng> savedLatLngs;
     private Activity activity;
-    private GoogleMap googleMap;
     private GoogleApiClient googleApiClient;
     private BottomSheetBehavior behavior;
-
     private boolean isServiceBound = false;
+    private ServiceConnection connection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            NetworkService.NetworkServiceBinder binder = (NetworkService.NetworkServiceBinder) service;
+            networkService = binder.getService();
+            isServiceBound = true;
+            if (!CommonUtils.isNetworkConnected(activity)) {
+                return;
+            }
+            getCookie();
+        }
 
-    private List<RealmFishingData> realmDatas;
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+
+        }
+    };
 
     public FishingMapPresenterImpl(Activity activity) {
         this.activity = activity;
         App.getAppComponent().inject(this);
     }
-
 
     @Override
     public void attachView(FishingMapView view) {
@@ -95,39 +108,6 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
     @Override
     public void detachView(FishingMapView view) {
         this.view = view;
-    }
-
-    /**
-     * Save the unsaved marker into the Realm DB.
-     *
-     * @param latLng
-     * @param fishingDatas
-     */
-    @Override
-    public void saveMarker(LatLng latLng, FishingData[] fishingDatas) {
-//        realmDatas = realm.where(RealmFishingData.class).findAll();
-//
-//        if (realmDatas != null && realmDatas.size() >= 20) {
-//            return;
-//        }
-//
-//        RealmFishingData data = new RealmFishingData();
-//        data.setIndex(realmDatas != null ? realmDatas.size() : 0);
-//        data.setLat(latLng.latitude);
-//        data.setLng(latLng.longitude);
-//        data.setFishingDatas(fishingDatas);
-//
-//        realm.beginTransaction();
-//        realm.insertOrUpdate(realmDatas);
-//        realm.commitTransaction();
-//
-//        // todo set title and set tag to indentify it was saved.
-////        unsavedMarker.setTitle();
-////        unsavedMarker.setTitle();
-//
-//        markerList.add(unsavedMarker);
-
-
     }
 
     @Override
@@ -152,19 +132,80 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
 
     @Override
     public void setGoogleMapConfiguration(GoogleMap googleMap) {
-        this.googleMap = mapProvider.mapBuilder(googleMap).defaultBuild();
+        mapProvider.mapBuilder(googleMap).defaultBuild();
         // Limited in NZ
         mapProvider.setMapBoundary(MapProvider.LATLNG_NEW_ZEALAND);
         mapProvider.moveLastLocation();
+    }
 
+    /**
+     * get Saved Marker objects
+     */
+    @Override
+    public void getSavedMarkers() {
+        RealmResults<RealmLatLng> savedlatlng = realm.where(RealmLatLng.class).findAll();
+        // todo Must check it runs on the main UI thread.
+        savedMarkers = mapProvider.getMarkers(savedlatlng);
+    }
+
+    /**
+     * Save the unsaved marker into the Realm DB.
+     * 1. get saved latlngs
+     * 2. get saved fishing data relating to latlngs
+     * 3. convert the unsaved data array to the collection.
+     * 4. get unsaved latlng and put that into the latlngs collection.
+     * 5. insert update latlngs
+     * 6. put unsaved data into the saved data collection.
+     * 7. insert update fishing data.
+     *
+     * @param latLng
+     * @param fishingDatas
+     */
+    @Override
+    public void saveMarker(LatLng latLng, FishingData[] fishingDatas) {
+
+        savedLatLngs = realm.where(RealmLatLng.class).findAll();
+
+        if (savedLatLngs != null && savedLatLngs.size() >= 20) {
+            view.showToast("Max 20 lists had been reached.");
+            return;
+        }
+
+        RealmList<RealmFishingData> unsavedMarkerDatas = new RealmList<>();
+        // Convert the array to the Realm collection.
+        for (FishingData data : fishingDatas) {
+            unsavedMarkerDatas.add(new RealmFishingData(data));
+        }
+
+        // put newly saved marker into Marker collection.
+        RealmLatLng unsavedLatLng = new RealmLatLng(unsavedMarkerDatas);
+
+        realm.beginTransaction();
+        realm.insertOrUpdate(unsavedLatLng);
+        realm.insertOrUpdate(unsavedMarkerDatas);
+        realm.commitTransaction();
+
+        this.unsavedMarker.setTag(savedLatLngs.size());
+        this.unsavedMarker.setTitle(savedLatLngs.size() + " " + unsavedMarkerDatas.get(0).getTidestation());
+        mapProvider.setSavedMarkerIcon(this.unsavedMarker);
+        savedMarkers.add(this.unsavedMarker);
+
+        view.showToast("The Marker has been added.");
+    }
+
+    @Override
+    public void setSavedMarkersVisibility(boolean isVisible) {
+        mapProvider.setMarkersVisible(true, savedMarkers);
+    }
+
+    @Override
+    public void getSavedFishingData(Object tag) {
+        // Todo get lat lng by tag, fetch data from DB.
     }
 
     @Override
     public boolean isMapConnected() {
-        if (googleApiClient != null) {
-            return googleApiClient.isConnected();
-        }
-        return false;
+        return googleApiClient != null && googleApiClient.isConnected();
     }
 
     @Override
@@ -197,7 +238,7 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
 
     @Override
     public boolean isMyLocaitonEnabled() {
-        return googleMap.isMyLocationEnabled();
+        return mapProvider.getGoogleMap().isMyLocationEnabled();
     }
 
     @Override
@@ -208,31 +249,41 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
         }
     }
 
+    /**
+     * Add the unsaved Marker on the Map
+     *
+     * @param latlng
+     */
     @Override
     public void addUnsavedMarker(LatLng latlng) {
         if (getBottomBehavior().getState() == BottomSheetBehavior.STATE_HIDDEN) {
             setBottomState(BottomSheetBehavior.STATE_COLLAPSED);
 
-            unsavedMarker = googleMap.addMarker(new MarkerOptions()
-                    .position(latlng)
-                    .draggable(false)
-                    .title("Title Here!")
-                    .visible(true));
+            unsavedMarker = mapProvider.addUnsavedMarker(latlng);
 
             centerTheMarker(latlng);
 
-            googleMap.setPadding(0, 0, 0, behavior.getPeekHeight());
+            mapProvider.setMapPadding(0, 0, 0, behavior.getPeekHeight());
 
             // Information for the bottom sheet
             getMarkerInfo(latlng, 2, new Date(), TimeZone.getDefault());
         }
     }
 
+    /**
+     * Remove the unsaved Marker on the map
+     *
+     * @param marker
+     * @param isHidden
+     */
     @Override
     public void removeUnsavedMarker(final Marker marker, boolean isHidden) {
         if (marker != null) {
-            view.removeMaker(marker);
-            googleMap.setPadding(0, 0, 0, 0);
+            if (marker.getTag() == null) {
+                mapProvider.removeMarker(marker);
+                mapProvider.setMapPadding(0, 0, 0, 0);
+                view.flushBottomSheetContents();
+            }
         }
         if (isHidden) {
             setBottomState(BottomSheetBehavior.STATE_HIDDEN);
@@ -244,9 +295,8 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
      *
      * @param latLng
      */
-    void centerTheMarker(final LatLng latLng) {
-//        mapProvider.animateZoomTo(latLng, MapProvider.MAX_ZOOM);
-        Projection proj = googleMap.getProjection();
+    private void centerTheMarker(final LatLng latLng) {
+        Projection proj = mapProvider.getProjection();
         Point point = proj.toScreenLocation(latLng);
         int halfX = metrics.widthPixels / 2;
         int halfY = metrics.heightPixels / 2;
@@ -256,12 +306,18 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
         mapProvider.animateCamera(centerLatLang);
     }
 
+    /**
+     * Binding the service. It happens onResume().
+     */
     @Override
     public void connectService() {
         Intent intent = new Intent(activity, NetworkService.class);
         activity.bindService(intent, connection, Context.BIND_AUTO_CREATE);
     }
 
+    /**
+     * Unbind the service. It happens onPause().
+     */
     @Override
     public void disconnectService() {
         if (isServiceBound) {
@@ -286,10 +342,19 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
                 view.setLoadingBottom(false);
 
                 FishingDataArrayParcelable parcel = bundle.getParcelable("FISHING_DATA");
-                FishingData[] dataArray = parcel.getDataArray();
 
-                // set data into the bottom sheet
-                view.addBottomSheetContents(latLng, dataArray);
+                FishingData[] dataArray = null;
+                try {
+                    dataArray = parcel.getDataArray();
+                } catch (NullPointerException e) {
+                    e.printStackTrace();
+                }
+                if (dataArray != null) {
+                    // set data into the bottom sheet
+                    view.addBottomSheetContents(latLng, dataArray);
+                } else {
+                    view.showToast("No data was fetched from the server.");
+                }
             }
 
             @Override
@@ -297,9 +362,7 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
                 view.setLoadingBottom(false);
                 String message = bundle.getString("MESSAGE");
                 view.showToast(message);
-                if (unsavedMarker != null) {
-                    removeUnsavedMarker(unsavedMarker, true);
-                }
+                removeUnsavedMarker(unsavedMarker, true);
             }
         };
 
@@ -308,6 +371,11 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
         networkService.getFishingInfo(latLng, day, date, timeZone, callback);
     }
 
+    /**
+     * Defines the behavior of the bottomSheet.
+     *
+     * @param bottomSheet
+     */
     @Override
     public void setBottomSheetBehavior(View bottomSheet) {
         behavior = BottomSheetBehavior.from(bottomSheet);
@@ -363,18 +431,13 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
         ServiceInterface.ServiceCallback callback = new ServiceInterface.ServiceCallback() {
             @Override
             public void onSuccess(Bundle bundle) {
-
-                String cookieStr;
-
-                if (bundle.getBoolean("HAS_COOKIE", false)) {
-                    cookieStr = preferences.getString(activity.getString(R.string.key_cookie), "");
-                } else {
-                    cookieStr = bundle.getString(activity.getString(R.string.key_cookie), "");
-
+                if (!bundle.getBoolean("HAS_COOKIE", false)) {
+                    String cookieStr = bundle.getString(activity.getString(R.string.key_cookie), "");
                     if (!"".equals(cookieStr)) {
+                        // Save Cookie
                         preferences.edit()
                                 .putString(activity.getString(R.string.key_cookie), cookieStr)
-                                .putLong(activity.getString(R.string.key_cookie_time), new Date().getTime()).commit();
+                                .putLong(activity.getString(R.string.key_cookie_time), new Date().getTime()).apply();
                     }
                 }
             }
@@ -418,8 +481,6 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
         }
     }
 
-    long interval = 0;
-
     @Override
     public void onLocationChanged(Location location) {
         Log.d(TAG, "startLocationUpdate");
@@ -427,24 +488,6 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
         Toast.makeText(activity, "[" + (milisec - interval) + "]" + location.getLatitude() + " / " + location.getLongitude(), Toast.LENGTH_LONG).show();
         interval = milisec;
     }
-
-    ServiceConnection connection = new ServiceConnection() {
-        @Override
-        public void onServiceConnected(ComponentName name, IBinder service) {
-            NetworkService.NetworkServiceBinder binder = (NetworkService.NetworkServiceBinder) service;
-            networkService = binder.getService();
-            isServiceBound = true;
-            if (!CommonUtils.isNetworkConnected(activity)) {
-                return;
-            }
-            getCookie();
-        }
-
-        @Override
-        public void onServiceDisconnected(ComponentName name) {
-
-        }
-    };
 
 
 }

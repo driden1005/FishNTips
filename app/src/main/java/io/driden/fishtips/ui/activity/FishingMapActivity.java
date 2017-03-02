@@ -154,7 +154,7 @@ public class FishingMapActivity extends BaseActivity implements FishingMapView
         Animation fabForward = AnimationUtils.loadAnimation(getApplicationContext(), R.anim.fab_forward);
 
         fabSaveBtn.startAnimation(fabForward);
-
+        // Save the current marker.
         fabSaveBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -167,9 +167,9 @@ public class FishingMapActivity extends BaseActivity implements FishingMapView
     @Override
     public void setLoadingBottom(boolean isLoading) {
         if (isLoading) {
-
+            // todo visible loading
         } else {
-
+            // todo invisible loading
         }
     }
 
@@ -204,13 +204,6 @@ public class FishingMapActivity extends BaseActivity implements FishingMapView
 
     public void showSnackBar(String message) {
         Snackbar.make(bottomSheet, message, Snackbar.LENGTH_LONG).show();
-        ;
-    }
-
-    @Override
-    public void removeMaker(Marker marker) {
-        marker.remove();
-        flushBottomSheetContents();
     }
 
     @Override
@@ -257,6 +250,7 @@ public class FishingMapActivity extends BaseActivity implements FishingMapView
         // GoogleMap
         presenter.setGoogleMapConfiguration(googleMap);
         setGoogleMapListeners(googleMap);
+        presenter.setSavedMarkersVisibility(true);
     }
 
     @Override
@@ -272,13 +266,18 @@ public class FishingMapActivity extends BaseActivity implements FishingMapView
 
     @Override
     public boolean onMarkerClick(Marker marker) {
-        presenter.removeUnsavedMarker(marker, true);
+        if (marker.getTag() == null) {
+            presenter.removeUnsavedMarker(marker, true);
+        } else {
+            presenter.getSavedFishingData(marker.getTag());
+        }
         return false;
     }
 
     @Override
     public void onMapLoaded() {
-        Log.d(TAG, "onMapLoaded");
+        presenter.getSavedMarkers();
+        presenter.setSavedMarkersVisibility(true);
 
     }
 

@@ -23,36 +23,45 @@ import com.google.android.gms.location.LocationSettingsResult;
 import com.google.android.gms.location.LocationSettingsStatusCodes;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.Projection;
+import com.google.android.gms.maps.model.BitmapDescriptor;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import io.driden.fishtips.R;
 import io.driden.fishtips.common.CommonUtils;
+import io.driden.fishtips.model.RealmLatLng;
 
 public class MapProvider implements ResultCallback {
 
-    private final String LOCATION_PERMISSION = Manifest.permission.ACCESS_FINE_LOCATION;
-
     public static final int REQUEST_CODE_LOCATION_UPDATE = 12321;
-
     public static final int RESULT_CODE_LAST_LOCATION = 45832;
     public static final int RESULT_CODE_REQUEST_LOCATION = 45833;
     public static final int RESULT_CODE_LOCATION_PERMISSION = 45834;
-
-    public static final float MAX_ZOOM = 17f;
-    public static final float MIN_ZOOM = 5.5f;
-
+    private static final float MAX_ZOOM = 17f;
+    private static final float MIN_ZOOM = 5.5f;
     public static LatLngBounds LATLNG_NEW_ZEALAND = new LatLngBounds(new LatLng(-47.750526, 165.110728), new LatLng(-33.880332, 178.968273));
-    public LatLng AUCKLAND = new LatLng(-36.839472, 174.770025);
+    private static MapProvider instance;
+    private final String LOCATION_PERMISSION = Manifest.permission.ACCESS_FINE_LOCATION;
+    private final String TAG = getClass().getCanonicalName();
     public LatLng WELLINGTON = new LatLng(-41.285257, 174.781817);
     public LatLng TEST_LOCATION_1 = new LatLng(-42.554966, 173.662141);
     public LatLng TEST_LOCATION_2 = new LatLng(-37.293347, 176.077334);
-
-    private final String TAG = getClass().getCanonicalName();
-    private static MapProvider instance;
+    private LatLng AUCKLAND = new LatLng(-36.839472, 174.770025);
     private GoogleApiClient googleApiClient;
     private LocationRequest locationRequest;
     private GoogleMap googleMap;
     private Activity activity;
+
+    private MapProvider(Activity activity) {
+        this.activity = activity;
+    }
 
     public static MapProvider getInstance(Activity activity) {
         if (instance == null) {
@@ -65,14 +74,14 @@ public class MapProvider implements ResultCallback {
         return instance;
     }
 
+    public Projection getProjection() {
+        return googleMap.getProjection();
+    }
+
     private GoogleMap initGoogleMap(GoogleMapBuilder builder) {
         assert builder != null;
         this.googleMap = builder.googleMap;
         return builder.googleMap;
-    }
-
-    public MapProvider(Activity activity) {
-        this.activity = activity;
     }
 
     public GoogleMapBuilder mapBuilder(GoogleMap googleMap) {
@@ -86,6 +95,39 @@ public class MapProvider implements ResultCallback {
                 .addConnectionCallbacks(connectionCallbacks)
                 .addOnConnectionFailedListener(failedListener)
                 .addApi(LocationServices.API).build();
+    }
+
+    public List<Marker> getMarkers(List<RealmLatLng> realmLatLngs) {
+        List<Marker> savedMarkers = new ArrayList<>();
+
+        if (realmLatLngs == null || realmLatLngs.isEmpty()) {
+            return null;
+        }
+
+        BitmapDescriptor savedMarkerIcons = BitmapDescriptorFactory.fromResource(R.drawable.marker_icon_50);
+
+        int count = 0;
+        for (RealmLatLng realmLatLng : realmLatLngs) {
+            Marker savedMarker = getMarkerObj(new LatLng(realmLatLng.getLat(), realmLatLng.getLng()), false);
+            savedMarker.setIcon(savedMarkerIcons);
+            savedMarker.setTag(count++);
+            savedMarkers.add(savedMarker);
+        }
+        return savedMarkers;
+    }
+
+    public void setSavedMarkerIcon(Marker marker) {
+        BitmapDescriptor savedMarkerIcons = BitmapDescriptorFactory.fromResource(R.drawable.marker_icon_50);
+        marker.setIcon(savedMarkerIcons);
+    }
+
+    public void setMarkersVisible(boolean isVisible, List<Marker> markers) {
+        if (markers == null || markers.isEmpty()) {
+            return;
+        }
+        for (Marker marker : markers) {
+            marker.setVisible(isVisible);
+        }
     }
 
     public GoogleMap getGoogleMap() {
@@ -117,17 +159,17 @@ public class MapProvider implements ResultCallback {
     }
 
     public void animateCamera(LatLng latLng, float zoom1, float zoom2) {
-        if(zoom2 < zoom1){
+        if (zoom2 < zoom1) {
             zoom1 = MIN_ZOOM;
         }
-        if(zoom1 < MIN_ZOOM){
+        if (zoom1 < MIN_ZOOM) {
             zoom1 = MIN_ZOOM;
         }
         googleMap.animateCamera(CameraUpdateFactory.zoomTo(MIN_ZOOM));  // zoom1
         googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, zoom2));
     }
 
-    public void moveCamera(LatLng latLng) {
+    private void moveCamera(LatLng latLng) {
         googleMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
     }
 
@@ -175,7 +217,6 @@ public class MapProvider implements ResultCallback {
         Location lastLocaton = LocationServices.FusedLocationApi.getLastLocation(googleApiClient);
         if (lastLocaton != null) {
             moveCamera(new LatLng(lastLocaton.getLatitude(), lastLocaton.getLongitude()));
-            return;
         } else {
             moveCamera(AUCKLAND);
         }
@@ -189,7 +230,7 @@ public class MapProvider implements ResultCallback {
         return LocationServices.FusedLocationApi.getLastLocation(googleApiClient);
     }
 
-    void setLocationSettingRequest() {
+    private void setLocationSettingRequest() {
         LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder()
                 .addLocationRequest(locationRequest);
 
@@ -224,6 +265,38 @@ public class MapProvider implements ResultCallback {
                 // settings so we won't show the dialog.
                 break;
         }
+    }
+
+    /**
+     * Add unsaved marker performed by long clicking the map.
+     *
+     * @param latlng
+     * @return
+     */
+    public Marker addUnsavedMarker(LatLng latlng) {
+        return getMarkerObj(latlng, true);
+    }
+
+    /**
+     * Add Saved markers from Database
+     *
+     * @param latlng
+     * @param isVisible
+     * @return
+     */
+    private Marker getMarkerObj(LatLng latlng, boolean isVisible) {
+        return googleMap.addMarker(new MarkerOptions()
+                .position(latlng)
+                .draggable(false)
+                .visible(isVisible));
+    }
+
+    public void setMapPadding(int i1, int i2, int i3, int i4) {
+        googleMap.setPadding(i1, i2, i3, i4);
+    }
+
+    public void removeMarker(Marker marker) {
+        marker.remove();
     }
 
 
