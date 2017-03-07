@@ -26,8 +26,8 @@ import io.driden.fishtips.app.App;
 import io.driden.fishtips.model.FishingData;
 import io.driden.fishtips.model.FishingDataArrayParcelable;
 import io.driden.fishtips.model.MarkersTag;
+import io.driden.fishtips.provider.HttpProvider;
 import io.driden.fishtips.service.ServiceInterface;
-import io.driden.fishtips.util.HttpProvider;
 import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -72,67 +72,63 @@ public class MarkerInfoRunner implements Runnable {
         App.getAppComponent().inject(this);
     }
 
+    public String getName() {
+        return Thread.currentThread().getName();
+    }
+
     @Override
     public void run() {
 
-        final String cookieStr = preferences.getString(application.getString(R.string.key_cookie), "");
-        Log.d(TAG, "run: " + cookieStr);
-        OkHttpClient cl = new HttpProvider.ClientBuilder()
-                .setDefaultTimeOuts()
-                .addInterceptor(new Interceptor() {
-                    @Override
-                    public okhttp3.Response intercept(Chain chain) throws IOException {
-                        Request original = chain.request();
-
-                        Request request = original.newBuilder()
-                                .header("User-Agent", "Android")
-                                .header("Cookie", cookieStr)
-                                .header("Referer", "https://www.bitetimes.com/")
-                                .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
-                                .header("Accept-Language", Locale.getDefault().getLanguage())
-                                .method(original.method(), original.body())
-                                .build();
-
-                        return chain.proceed(request);
-                    }
-                })
-                .build();
-
-        Retrofit retrofitXML = new Retrofit.Builder().baseUrl(application.getString(R.string.url_bite_times))
-                .client(cl).addConverterFactory(SimpleXmlConverterFactory.create())
-                .build();
-        BiteTimesAPI api = retrofitXML.create(BiteTimesAPI.class);
-
-        Call<MarkersTag> tideCall = api.getTideStation(latLng.latitude, latLng.longitude, 2000);
-
-        Response<MarkersTag> tideResponse = null;
         try {
-            tideResponse = tideCall.execute();
-        } catch (IOException e) {
-            e.printStackTrace();
+            final String cookieStr = preferences.getString(application.getString(R.string.key_cookie), "");
+            Log.d(TAG, "run: " + cookieStr);
+            OkHttpClient cl = new HttpProvider.ClientBuilder()
+                    .setDefaultTimeOuts()
+                    .addInterceptor(new Interceptor() {
+                        @Override
+                        public okhttp3.Response intercept(Chain chain) throws IOException {
+                            Request original = chain.request();
 
-            Bundle bundle = new Bundle();
-            bundle.putString("MESSAGE", "Marker Fetch Error");
-            callback.onFailure(bundle);
-        }
-        MarkersTag markersTag = tideResponse.body();
+                            Request request = original.newBuilder()
+                                    .header("User-Agent", "Android")
+                                    .header("Cookie", cookieStr)
+                                    .header("Referer", "https://www.bitetimes.com/")
+                                    .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
+                                    .header("Accept-Language", Locale.getDefault().getLanguage())
+                                    .method(original.method(), original.body())
+                                    .build();
 
-        api = retrofitGSON.create(BiteTimesAPI.class);
+                            return chain.proceed(request);
+                        }
+                    })
+                    .build();
 
-        String tideStation = markersTag.getList().get(0).getName() == null ? "" : markersTag.getList().get(0).getName();
+            Retrofit retrofitXML = new Retrofit.Builder().baseUrl(application.getString(R.string.url_bite_times))
+                    .client(cl).addConverterFactory(SimpleXmlConverterFactory.create())
+                    .build();
+            BiteTimesAPI api = retrofitXML.create(BiteTimesAPI.class);
 
-        SimpleDateFormat sdf = new SimpleDateFormat("dd-MMM-yyyy");
+            Call<MarkersTag> tideCall = api.getTideStation(latLng.latitude, latLng.longitude, 2000);
 
-        Call<ResponseBody> dataCall = api.getData(
-                latLng.latitude,
-                latLng.longitude,
-                days,
-                tideStation,
-                timeZone.getID(),
-                sdf.format(date)
-        );
+            Response<MarkersTag> tideResponse = tideCall.execute();
 
-        try {
+            MarkersTag markersTag = tideResponse.body();
+
+            api = retrofitGSON.create(BiteTimesAPI.class);
+
+            String tideStation = markersTag.getList().get(0).getName() == null ? "" : markersTag.getList().get(0).getName();
+
+            SimpleDateFormat sdf = new SimpleDateFormat("dd-MMM-yyyy");
+
+            Call<ResponseBody> dataCall = api.getData(
+                    latLng.latitude,
+                    latLng.longitude,
+                    days,
+                    tideStation,
+                    timeZone.getID(),
+                    sdf.format(date)
+            );
+
             Response<ResponseBody> dataResponse = dataCall.execute();
             String result = dataResponse.body().string();
 
@@ -158,12 +154,10 @@ public class MarkerInfoRunner implements Runnable {
             bundle.putParcelable("FISHING_DATA", dataParcel);
 
             callback.onSuccess(bundle);
-
         } catch (Exception e) {
             e.printStackTrace();
-
             Bundle bundle = new Bundle();
-            bundle.putString("MESSAGE", "Fishing Data Feching Error");
+            bundle.putString("MESSAGE", "Marker Fetch Error:" + e.getMessage());
             callback.onFailure(bundle);
         }
     }

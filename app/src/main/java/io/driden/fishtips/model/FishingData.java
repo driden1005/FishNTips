@@ -5,41 +5,42 @@ import android.os.Parcelable;
 
 public class FishingData implements Parcelable {
 
+    public static final Creator<FishingData> CREATOR = new Creator<FishingData>() {
+        @Override
+        public FishingData createFromParcel(Parcel in) {
+            return new FishingData(in);
+        }
+
+        @Override
+        public FishingData[] newArray(int size) {
+            return new FishingData[size];
+        }
+    };
     private String tidestation;
     private String moonculmination;
     private String moonset;
     private String moonunderfoot;
     private String moonrise;
-
     private String sunset;
     private String sunrise;
-
     private String moonday;
-
     private String date;
-
     private String tide;
-
     private String minor1;
     private String minor1rating;
     private String min1color;
-
     private String minor2;
     private String minor2rating;
     private String min2color;
-
     private String major1;
     private String major1rating;
     private String maj1color;
-
     private String major2;
     private String major2rating;
     private String maj2color;
-
     private double lat;
     private double lng;
     private int index;
-
 
     protected FishingData(Parcel in) {
         tidestation = in.readString();
@@ -67,6 +68,33 @@ public class FishingData implements Parcelable {
         lat = in.readDouble();
         lng = in.readDouble();
         index = in.readInt();
+    }
+
+    public FishingData(RealmFishingData data) {
+        tidestation = data.getTidestation();
+        moonculmination = data.getMoonculmination();
+        moonset = data.getMoonset();
+        moonunderfoot = data.getMoonunderfoot();
+        moonrise = data.getMoonrise();
+        sunset = data.getSunset();
+        sunrise = data.getSunrise();
+        moonday = data.getMoonday();
+        date = data.getDate();
+        tide = data.getTide();
+        minor1 = data.getMinor1();
+        minor1rating = data.getMinor1rating();
+        min1color = data.getMin1color();
+        minor2 = data.getMinor2();
+        minor2rating = data.getMinor2rating();
+        min2color = data.getMin2color();
+        major1 = data.getMajor1();
+        major1rating = data.getMajor1rating();
+        maj1color = data.getMaj1color();
+        major2 = data.getMajor2();
+        major2rating = data.getMajor2rating();
+        maj2color = data.getMaj2color();
+        lat = data.getLat();
+        lng = data.getLng();
     }
 
     @Override
@@ -102,18 +130,6 @@ public class FishingData implements Parcelable {
     public int describeContents() {
         return 0;
     }
-
-    public static final Creator<FishingData> CREATOR = new Creator<FishingData>() {
-        @Override
-        public FishingData createFromParcel(Parcel in) {
-            return new FishingData(in);
-        }
-
-        @Override
-        public FishingData[] newArray(int size) {
-            return new FishingData[size];
-        }
-    };
 
     public double getLat() {
         return lat;

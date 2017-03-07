@@ -29,9 +29,9 @@ import io.driden.fishtips.R;
 import io.driden.fishtips.app.App;
 import io.driden.fishtips.model.FishingData;
 import io.driden.fishtips.presenter.FishingMapPresenter;
+import io.driden.fishtips.presenter.MainThreadSpec;
+import io.driden.fishtips.provider.MapProviderImpl;
 import io.driden.fishtips.service.NetworkService;
-import io.driden.fishtips.util.MainThreadSpec;
-import io.driden.fishtips.util.MapProvider;
 import io.driden.fishtips.view.BottomItemView;
 import io.driden.fishtips.view.FishingMapView;
 import me.panavtec.threaddecoratedview.views.ViewInjector;
@@ -137,8 +137,16 @@ public class FishingMapActivity extends BaseActivity implements FishingMapView
         gMap.setOnCameraMoveCanceledListener(this);
     }
 
+    /**
+     * Adding child views of the bottom sheet view.
+     *
+     * @param latLng
+     * @param dataArray
+     */
     @Override
     public void addBottomSheetContents(final LatLng latLng, final FishingData[] dataArray) {
+
+        ((ViewGroup) itemContainer).removeAllViews();
 
         for (int i = 0; i < dataArray.length; i++) {
 
@@ -155,15 +163,12 @@ public class FishingMapActivity extends BaseActivity implements FishingMapView
 
         fabSaveBtn.startAnimation(fabForward);
         // Save the current marker.
-        fabSaveBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                presenter.saveMarker(latLng, dataArray);
-            }
-        });
+        fabSaveBtn.setOnClickListener(v -> presenter.saveMarker(latLng, dataArray));
     }
 
-    // Loading progress bar in the bottom sheet view
+    /**
+     * Loading progress bar in the bottom sheet view
+     */
     @Override
     public void setLoadingBottom(boolean isLoading) {
         if (isLoading) {
@@ -173,11 +178,19 @@ public class FishingMapActivity extends BaseActivity implements FishingMapView
         }
     }
 
+    /**
+     * flush child views of the bottom sheet view.
+     */
     @Override
     public void flushBottomSheetContents() {
         ((ViewGroup) itemContainer).removeAllViews();
     }
 
+    /**
+     * set visibility of the floating action button
+     *
+     * @param isVisible
+     */
     @Override
     public void setFabBottomVisibilty(boolean isVisible) {
 
@@ -269,7 +282,7 @@ public class FishingMapActivity extends BaseActivity implements FishingMapView
         if (marker.getTag() == null) {
             presenter.removeUnsavedMarker(marker, true);
         } else {
-            presenter.getSavedFishingData(marker.getTag());
+            presenter.getSavedFishingData(marker);
         }
         return false;
     }
@@ -317,7 +330,7 @@ public class FishingMapActivity extends BaseActivity implements FishingMapView
                                            @NonNull int[] grantResults) {
 
         switch (requestCode) {
-            case MapProvider.RESULT_CODE_LAST_LOCATION: {
+            case MapProviderImpl.RESULT_CODE_LAST_LOCATION: {
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     Toast.makeText(this, "Permission RESULT_CODE_LAST_LOCATION", Toast.LENGTH_SHORT).show();
                 } else {
@@ -325,7 +338,7 @@ public class FishingMapActivity extends BaseActivity implements FishingMapView
                 }
                 return;
             }
-            case MapProvider.RESULT_CODE_REQUEST_LOCATION: {
+            case MapProviderImpl.RESULT_CODE_REQUEST_LOCATION: {
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     Toast.makeText(this, "Permission RESULT_CODE_REQUEST_LOCATION", Toast.LENGTH_SHORT).show();
                     presenter.startLocationUpdate();
@@ -334,7 +347,7 @@ public class FishingMapActivity extends BaseActivity implements FishingMapView
                 }
                 return;
             }
-            case MapProvider.RESULT_CODE_LOCATION_PERMISSION: {
+            case MapProviderImpl.RESULT_CODE_LOCATION_PERMISSION: {
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     Toast.makeText(this, "Permission RESULT_CODE_LOCATION_PERMISSION", Toast.LENGTH_SHORT).show();
                     mapFragment.getMapAsync(this);
@@ -352,7 +365,7 @@ public class FishingMapActivity extends BaseActivity implements FishingMapView
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == MapProvider.REQUEST_CODE_LOCATION_UPDATE) {
+        if (requestCode == MapProviderImpl.REQUEST_CODE_LOCATION_UPDATE) {
             if (resultCode == RESULT_OK) {
                 presenter.startLocationUpdate();
             } else {

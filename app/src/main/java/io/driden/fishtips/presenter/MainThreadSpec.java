@@ -1,4 +1,4 @@
-package io.driden.fishtips.util;
+package io.driden.fishtips.presenter;
 
 import android.os.Handler;
 

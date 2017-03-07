@@ -1,11 +1,11 @@
 package io.driden.fishtips.util;
 
 
-public class HeaderUtil {
+public class HeaderUtils {
 
     String cookie;
 
-    public HeaderUtil(String cookie){
+    public HeaderUtils(String cookie) {
         this.cookie = cookie;
     }
 

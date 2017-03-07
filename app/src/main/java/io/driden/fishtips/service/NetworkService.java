@@ -26,19 +26,11 @@ import io.driden.fishtips.tasks.MarkerInfoRunner;
 
 public class NetworkService extends Service implements NetworkServiceInterface {
 
-    private final String TAG = getClass().getSimpleName();
-
     final IBinder binder = new NetworkServiceBinder();
-
+    private final String TAG = getClass().getSimpleName();
     @Inject
     @Named("network")
     SharedPreferences preferences;
-
-    public class NetworkServiceBinder extends Binder {
-        public NetworkService getService() {
-            return NetworkService.this;
-        }
-    }
 
     @Nullable
     @Override
@@ -75,8 +67,15 @@ public class NetworkService extends Service implements NetworkServiceInterface {
     }
 
     @Override
-    public void getFishingInfo(LatLng latLng, int days, Date date, TimeZone timeZone, ServiceCallback callback) {
+    public ExecutorService getFishingInfo(LatLng latLng, int days, Date date, TimeZone timeZone, ServiceCallback callback) {
         ExecutorService executor = Executors.newSingleThreadExecutor();
         executor.execute(new MarkerInfoRunner(latLng, days, date, timeZone, callback));
+        return executor;
+    }
+
+    public class NetworkServiceBinder extends Binder {
+        public NetworkService getService() {
+            return NetworkService.this;
+        }
     }
 }

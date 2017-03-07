@@ -6,7 +6,6 @@ import android.support.annotation.ColorInt;
 import android.support.v4.content.ContextCompat;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.GridLayout;
@@ -114,8 +113,6 @@ public class BottomItemView extends LinearLayout {
 
         targetDate = cal.getTime();
 
-        Log.d(TAG, "setData: targetDate :" + targetDate.toString());
-
         infoMoon.loadMoonImage(targetDate);
 
         GridLayout tideTimes = ButterKnife.findById(view, R.id.tideTimes);
@@ -146,7 +143,6 @@ public class BottomItemView extends LinearLayout {
     }
 
     void getTextColor(String str, TextView tv) {
-        Log.d(TAG, "getTextColor: " + str);
 
         @ColorInt int colorInt;
 

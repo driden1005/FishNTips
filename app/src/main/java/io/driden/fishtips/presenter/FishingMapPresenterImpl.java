@@ -28,9 +28,16 @@ import com.google.android.gms.maps.Projection;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.TimeZone;
+import java.util.concurrent.ExecutorService;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -42,10 +49,10 @@ import io.driden.fishtips.model.FishingData;
 import io.driden.fishtips.model.FishingDataArrayParcelable;
 import io.driden.fishtips.model.RealmFishingData;
 import io.driden.fishtips.model.RealmLatLng;
+import io.driden.fishtips.provider.MapProviderImpl;
 import io.driden.fishtips.service.NetworkService;
 import io.driden.fishtips.service.NetworkServiceInterface;
 import io.driden.fishtips.service.ServiceInterface;
-import io.driden.fishtips.util.MapProvider;
 import io.driden.fishtips.view.FishingMapView;
 import io.realm.Realm;
 import io.realm.RealmList;
@@ -53,8 +60,9 @@ import io.realm.RealmResults;
 
 public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapView> {
 
-    private static final float BOTTOM_HEIGHT = 300.0f;
     private final String TAG = getClass().getCanonicalName();
+
+    private final float BOTTOM_HEIGHT = 300.0f;  // the height of the bottom sheetview when it is collapesed.
 
     @Inject
     @Named("network")
@@ -64,19 +72,30 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
     @Inject
     Realm realm;
 
-    private MapProvider mapProvider;
+    private MapProviderImpl mapProvider;
 
     private NetworkServiceInterface networkService;
 
+    private ExecutorService executor;
+
     private FishingMapView view;
+
     private long interval = 0;
+
     private Marker unsavedMarker;
+
     private List<Marker> savedMarkers;
+
     private RealmResults<RealmLatLng> savedLatLngs;
+
     private Activity activity;
+
     private GoogleApiClient googleApiClient;
+
     private BottomSheetBehavior behavior;
+
     private boolean isServiceBound = false;
+    // for bounding the service
     private ServiceConnection connection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
@@ -91,7 +110,9 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
-
+            if (executor != null && !executor.isTerminated() && !executor.isShutdown()) {
+                executor.shutdownNow();
+            }
         }
     };
 
@@ -110,9 +131,12 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
         this.view = view;
     }
 
+    /**
+     * instantiate the Google API client.
+     */
     @Override
     public void initGoogleApiClient() {
-        mapProvider = MapProvider.getInstance(activity);
+        mapProvider = MapProviderImpl.getInstance(activity);
         // Set Location API, Location Request
         if (CommonUtils.checkPlayService(activity.getApplicationContext())) {
             // Google API
@@ -120,36 +144,137 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
             // PlayService is enabled, then it has the api client object.
             googleApiClient = mapProvider.getGoogleApiClient();
         } else {
-            Log.d(TAG, "initGoogleApiClient: No Google Play Service");
+            Log.d(TAG, "initGoogleApiClient: No Google Play Service found.");
         }
     }
 
+    /**
+     * Set the location request (update interval, range to update, priory)
+     */
     @Override
     public void setLocationRequest() {
         // Location Request
         mapProvider.setLocationRequest(10000, 5000, LocationRequest.PRIORITY_HIGH_ACCURACY, 20);
     }
 
+    /**
+     * Init the google Map with configuration (get the GoogleMap from the activity)
+     *
+     * @param googleMap
+     */
     @Override
     public void setGoogleMapConfiguration(GoogleMap googleMap) {
         mapProvider.mapBuilder(googleMap).defaultBuild();
         // Limited in NZ
-        mapProvider.setMapBoundary(MapProvider.LATLNG_NEW_ZEALAND);
+        mapProvider.setMapBoundary(MapProviderImpl.LATLNG_NEW_ZEALAND);
         mapProvider.moveLastLocation();
     }
 
-    /**
-     * get Saved Marker objects
-     */
     @Override
     public void getSavedMarkers() {
-        RealmResults<RealmLatLng> savedlatlng = realm.where(RealmLatLng.class).findAll();
-        // todo Must check it runs on the main UI thread.
-        savedMarkers = mapProvider.getMarkers(savedlatlng);
+        RealmResults<RealmLatLng> savedLatLngs = realm.where(RealmLatLng.class).findAll();
+
+        Date currentDate = new Date();
+        SimpleDateFormat sdf = new SimpleDateFormat("EEE dd MMM");
+        String currentDateStr = sdf.format(currentDate);
+
+        savedMarkers = new ArrayList<>();
+
+        int count = 0;
+        for (RealmLatLng realmlatLng : savedLatLngs) {
+
+            RealmFishingData data =
+                    realm.where(RealmFishingData.class)
+                            .equalTo("date", currentDateStr)
+                            .equalTo("milisec", realmlatLng.getMilisec())
+                            .findFirst();
+
+            Marker marker = getColoredMarker(currentDate, realmlatLng, data);
+
+            marker.setTag(count++);
+
+            savedMarkers.add(marker);
+        }
+    }
+
+    private Marker getColoredMarker(Date currentDate, RealmLatLng realmlatLng, RealmFishingData data) {
+
+        Marker marker;
+
+        if (data != null) {
+
+            if (isTheTimeIncluded(currentDate, data.getMajor1())) {
+                marker = mapProvider.getMarker(realmlatLng, data.getMaj1color());
+            } else if (isTheTimeIncluded(currentDate, data.getMajor2())) {
+                marker = mapProvider.getMarker(realmlatLng, data.getMaj2color());
+            } else if (isTheTimeIncluded(currentDate, data.getMinor1())) {
+                marker = mapProvider.getMarker(realmlatLng, data.getMin1color());
+            } else if (isTheTimeIncluded(currentDate, data.getMinor2())) {
+                marker = mapProvider.getMarker(realmlatLng, data.getMin2color());
+            } else {
+                marker = mapProvider.getMarker(realmlatLng, "");
+            }
+        } else {
+            marker = mapProvider.getMarker(realmlatLng, "");
+        }
+
+        return marker;
     }
 
     /**
-     * Save the unsaved marker into the Realm DB.
+     * Get true or false if current time is in the major or minor bite time period.
+     * this code is terribly ugly.... need to fix it later :(
+     *
+     * @param currentDate
+     * @param dateRange
+     * @return
+     */
+    private boolean isTheTimeIncluded(Date currentDate, String dateRange) {
+
+        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm");
+
+        String currentTimeStr = sdf.format(currentDate);
+
+        final String regex = "[0-9]{2}:[0-9]{2}";
+        final Pattern pattern = Pattern.compile(regex);
+        final Matcher matcher = pattern.matcher(dateRange);
+
+        Date currentTime = null;
+        try {
+            currentTime = sdf.parse(currentTimeStr);
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+
+        if (currentTime == null) {
+            return false;
+        }
+
+        Date[] timeArray = new Date[2];
+
+        int count = 0;
+        while (matcher.find()) {
+
+            try {
+
+                StringBuffer sb = new StringBuffer();
+                timeArray[count++] = sdf.parse(matcher.group(0));
+
+            } catch (ParseException e) {
+                e.printStackTrace();
+            }
+        }
+
+        if ((timeArray[0].getTime() <= currentTime.getTime()) &&
+                (timeArray[1].getTime() >= currentTime.getTime())) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Save the unsaved marker into the Realm.
      * 1. get saved latlngs
      * 2. get saved fishing data relating to latlngs
      * 3. convert the unsaved data array to the collection.
@@ -171,43 +296,107 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
             return;
         }
 
+        // put newly saved marker into Marker collection.
+        RealmLatLng unsavedLatLng = new RealmLatLng(fishingDatas);
+
         RealmList<RealmFishingData> unsavedMarkerDatas = new RealmList<>();
         // Convert the array to the Realm collection.
-        for (FishingData data : fishingDatas) {
-            unsavedMarkerDatas.add(new RealmFishingData(data));
-        }
 
-        // put newly saved marker into Marker collection.
-        RealmLatLng unsavedLatLng = new RealmLatLng(unsavedMarkerDatas);
+        Arrays.asList(fishingDatas).stream()
+                .map(fishingData -> new RealmFishingData(fishingData))
+                .peek(realmFishingData -> realmFishingData.setMilisec(unsavedLatLng.getMilisec())).forEach(realmFishingData -> unsavedMarkerDatas.add(realmFishingData));
+
+//        for (FishingData data : fishingDatas) {
+//            RealmFishingData realmFishingData = new RealmFishingData(data);
+//            realmFishingData.setMilisec(unsavedLatLng.getMilisec());
+//            unsavedMarkerDatas.add(realmFishingData);
+//        }
 
         realm.beginTransaction();
         realm.insertOrUpdate(unsavedLatLng);
         realm.insertOrUpdate(unsavedMarkerDatas);
         realm.commitTransaction();
 
-        this.unsavedMarker.setTag(savedLatLngs.size());
-        this.unsavedMarker.setTitle(savedLatLngs.size() + " " + unsavedMarkerDatas.get(0).getTidestation());
-        mapProvider.setSavedMarkerIcon(this.unsavedMarker);
-        savedMarkers.add(this.unsavedMarker);
+        Date currentDate = new Date();
+
+        Marker marker = getColoredMarker(currentDate, unsavedLatLng, unsavedMarkerDatas.get(0));
+        marker.setTag(savedLatLngs.size());
+
+        savedMarkers.add(marker);
+        marker.setVisible(true);
+
+        unsavedMarker.setVisible(false);
+        mapProvider.removeMarker(unsavedMarker);
 
         view.showToast("The Marker has been added.");
     }
 
+    /**
+     * set the saved markers' visibility
+     *
+     * @param isVisible
+     */
     @Override
     public void setSavedMarkersVisibility(boolean isVisible) {
         mapProvider.setMarkersVisible(true, savedMarkers);
     }
 
+    /**
+     * when one of saved markers is selected, get the tag, and query information.
+     *
+     * @param marker
+     */
     @Override
-    public void getSavedFishingData(Object tag) {
+    public void getSavedFishingData(Marker marker) {
         // Todo get lat lng by tag, fetch data from DB.
+        double lat = marker.getPosition().latitude;
+        double lng = marker.getPosition().longitude;
+
+        List<RealmFishingData> datas = realm.where(RealmFishingData.class).equalTo("lat", lat).equalTo("lng", lng).findAll();
+
+        if (getBottomBehavior().getState() == BottomSheetBehavior.STATE_HIDDEN) {
+            setBottomState(BottomSheetBehavior.STATE_COLLAPSED);
+
+            centerTheMarker(new LatLng(lat, lng));
+
+            mapProvider.setMapPadding(0, 0, 0, behavior.getPeekHeight());
+        }
+
+        FishingData[] dataArray = null;
+        try {
+
+            dataArray = datas.stream().map(x -> new FishingData(x)).toArray(FishingData[]::new);
+
+        } catch (NullPointerException e) {
+            e.printStackTrace();
+        }
+        if (dataArray != null) {
+            if (getBottomBehavior().getState() != BottomSheetBehavior.STATE_HIDDEN) {
+                // todo Remove FAB
+                view.setFabBottomVisibilty(true);
+                // set data into the bottom sheet
+                view.addBottomSheetContents(new LatLng(lat, lng), dataArray);
+            } else {
+                view.showToast("Adding BottomViewItems is canceled.");
+            }
+        } else {
+            view.showToast("No data was fetched from the server.");
+        }
     }
 
+    /**
+     * map connection check
+     *
+     * @return
+     */
     @Override
     public boolean isMapConnected() {
         return googleApiClient != null && googleApiClient.isConnected();
     }
 
+    /**
+     * Connect the map with API.
+     */
     @Override
     public void connectMap() {
         if (googleApiClient != null) {
@@ -215,6 +404,9 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
         }
     }
 
+    /**
+     * Disconnect the connection between the map and API.
+     */
     @Override
     public void disconnectMap() {
         if (googleApiClient != null) {
@@ -267,6 +459,8 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
 
             // Information for the bottom sheet
             getMarkerInfo(latlng, 2, new Date(), TimeZone.getDefault());
+
+            view.setFabBottomVisibilty(true);
         }
     }
 
@@ -279,12 +473,20 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
     @Override
     public void removeUnsavedMarker(final Marker marker, boolean isHidden) {
         if (marker != null) {
-            if (marker.getTag() == null) {
-                mapProvider.removeMarker(marker);
-                mapProvider.setMapPadding(0, 0, 0, 0);
-                view.flushBottomSheetContents();
-            }
+            // When cancel network thread by force, it makes exception (not on main thread)
+            activity.runOnUiThread(() -> {
+                if (marker.getTag() == null) {
+                    mapProvider.removeMarker(marker);
+                    mapProvider.setMapPadding(0, 0, 0, 0);
+                }
+            });
         }
+
+        // cancel thread if it is still running.
+        if (executor != null && !executor.isTerminated() && !executor.isShutdown()) {
+            executor.shutdownNow();
+        }
+
         if (isHidden) {
             setBottomState(BottomSheetBehavior.STATE_HIDDEN);
         }
@@ -302,6 +504,7 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
         int halfY = metrics.heightPixels / 2;
         int offsetX = halfX + (point.x - halfX);
         int offsetY = halfY + (point.y - halfY) + ((metrics.heightPixels - (int) (50 * metrics.density)) - behavior.getPeekHeight()) / 2;
+
         LatLng centerLatLang = proj.fromScreenLocation(new Point(offsetX, offsetY));
         mapProvider.animateCamera(centerLatLang);
     }
@@ -350,8 +553,12 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
                     e.printStackTrace();
                 }
                 if (dataArray != null) {
-                    // set data into the bottom sheet
-                    view.addBottomSheetContents(latLng, dataArray);
+                    if (getBottomBehavior().getState() != BottomSheetBehavior.STATE_HIDDEN) {
+                        // set data into the bottom sheet
+                        view.addBottomSheetContents(latLng, dataArray);
+                    } else {
+                        view.showToast("Adding BottomViewItems is canceled.");
+                    }
                 } else {
                     view.showToast("No data was fetched from the server.");
                 }
@@ -368,7 +575,7 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
 
         view.setLoadingBottom(true);
 
-        networkService.getFishingInfo(latLng, day, date, timeZone, callback);
+        executor = networkService.getFishingInfo(latLng, day, date, timeZone, callback);
     }
 
     /**
@@ -387,13 +594,15 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
                     case BottomSheetBehavior.STATE_EXPANDED:
                         break;
                     case BottomSheetBehavior.STATE_COLLAPSED:
-                        view.setFabBottomVisibilty(true);
                         break;
                     case BottomSheetBehavior.STATE_DRAGGING:
                         break;
                     case BottomSheetBehavior.STATE_HIDDEN:
+                        if (unsavedMarker != null) {
+                            removeUnsavedMarker(unsavedMarker, false);
+                        }
                         view.setFabBottomVisibilty(false);
-                        removeUnsavedMarker(unsavedMarker, false);
+                        view.flushBottomSheetContents();
                         break;
                     case BottomSheetBehavior.STATE_SETTLING:
                         break;
@@ -420,8 +629,7 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
         return behavior;
     }
 
-    @Override
-    public void setBottomState(int state) {
+    private void setBottomState(int state) {
         if (behavior != null) {
             behavior.setState(state);
         }

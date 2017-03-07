@@ -12,8 +12,8 @@ import javax.inject.Named;
 
 import io.driden.fishtips.R;
 import io.driden.fishtips.app.App;
+import io.driden.fishtips.provider.HttpProvider;
 import io.driden.fishtips.service.ServiceInterface;
-import io.driden.fishtips.util.HttpProvider;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 

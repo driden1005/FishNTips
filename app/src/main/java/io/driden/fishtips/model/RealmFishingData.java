@@ -1,6 +1,7 @@
 package io.driden.fishtips.model;
 
 import io.realm.RealmObject;
+import io.realm.annotations.Index;
 
 public class RealmFishingData extends RealmObject {
 
@@ -28,12 +29,15 @@ public class RealmFishingData extends RealmObject {
     private String maj2color;
     private double lat;
     private double lng;
+    @Index
+    private long milisec;
 
     public RealmFishingData() {
 
     }
 
     public RealmFishingData(FishingData data) {
+        this.date = data.getDate();
         this.tidestation = data.getTidestation();
         this.moonculmination = data.getMoonculmination();
         this.moonset = data.getMoonset();
@@ -58,6 +62,27 @@ public class RealmFishingData extends RealmObject {
 
         this.lat = data.getLat();
         this.lng = data.getLng();
+    }
+
+    @Override
+    public String toString() {
+
+        StringBuffer sb = new StringBuffer();
+        sb.append(date).append("__\n");
+        sb.append(major1).append("__\n");
+        sb.append(major2).append("__\n");
+        sb.append(minor1).append("__\n");
+        sb.append(minor2).append("__\n");
+
+        return sb.toString();
+    }
+
+    public long getMilisec() {
+        return milisec;
+    }
+
+    public void setMilisec(long milisec) {
+        this.milisec = milisec;
     }
 
     public double getLat() {

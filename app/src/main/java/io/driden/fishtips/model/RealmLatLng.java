@@ -1,25 +1,35 @@
 package io.driden.fishtips.model;
 
-import io.realm.RealmList;
+import java.util.Date;
+
 import io.realm.RealmObject;
+import io.realm.annotations.Index;
+import io.realm.annotations.PrimaryKey;
 
 public class RealmLatLng extends RealmObject {
 
     private double lat;
     private double lng;
+    @Index
+    @PrimaryKey
+    private long milisec;
 
     public RealmLatLng() {
 
     }
 
-    public RealmLatLng(double lat, double lng) {
-        this.lat = lat;
-        this.lng = lng;
+    public RealmLatLng(FishingData[] datas) {
+        this.lat = datas[0].getLat();
+        this.lng = datas[0].getLng();
+        this.milisec = new Date().getTime();
     }
 
-    public RealmLatLng(RealmList<RealmFishingData> datas) {
-        this.lat = datas.get(0).getLat();
-        this.lng = datas.get(0).getLng();
+    public long getMilisec() {
+        return milisec;
+    }
+
+    public void setMilisec(long milisec) {
+        this.milisec = milisec;
     }
 
     public double getLat() {

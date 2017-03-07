@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit;
 import io.driden.fishtips.api.BiteTimesAPI;
 import io.driden.fishtips.model.MarkersTag;
 import io.driden.fishtips.model.TideStation;
-import io.driden.fishtips.util.HttpProvider;
+import io.driden.fishtips.provider.HttpProvider;
 import io.driden.fishtips.util.TideStationXMLParser;
 import okhttp3.Interceptor;
 import okhttp3.MultipartBody;

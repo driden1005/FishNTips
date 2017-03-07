@@ -43,8 +43,6 @@ public interface FishingMapPresenter<T> extends
 
     BottomSheetBehavior getBottomBehavior();
 
-    void setBottomState(int state);
-
     boolean isMyLocaitonEnabled();
 
     void animateMyLastLocation();
@@ -59,5 +57,5 @@ public interface FishingMapPresenter<T> extends
 
     void setSavedMarkersVisibility(boolean isVisible);
 
-    void getSavedFishingData(Object tag);
+    void getSavedFishingData(Marker marker);
 }

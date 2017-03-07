@@ -14,7 +14,6 @@ import android.graphics.Paint;
 import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.View;
 
 import java.util.Date;
@@ -105,10 +104,6 @@ public class MoonView extends View {
         double positionAngle = Math.PI - phaseAngle;
         if (positionAngle < 0.)
             positionAngle += 2. * Math.PI;
-
-
-        Log.d(TAG, "onDraw: positionAngle: " + positionAngle);
-        Log.d(TAG, "onDraw: phaseAngle: " + phaseAngle);
 
         // Okay, now fill in the dark part.
         paint.setColor(earthshineColor);
