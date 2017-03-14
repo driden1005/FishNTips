@@ -117,15 +117,20 @@ public class MapProviderImpl implements MapProvider, ResultCallback {
      */
     public Marker getMarker(RealmLatLng realmLatLng, @NonNull String colorName) {
         if (realmLatLng != null) {
-            BitmapDescriptor savedMarkerIcons
-                    = BitmapDescriptorFactory
-                    .fromBitmap(resizeMapIcons(MarkerIconFactory.getIcon(activity, colorName), 50, 50));
             Marker savedMarker = getMarkerObj(new LatLng(realmLatLng.getLat(), realmLatLng.getLng()), false);
-            savedMarker.setIcon(savedMarkerIcons);
 
-            return savedMarker;
+            return changeIcon(savedMarker, colorName);
         }
         return null;
+    }
+
+    public Marker changeIcon(Marker marker, @NonNull String colorName) {
+        BitmapDescriptor savedMarkerIcons
+                = BitmapDescriptorFactory
+                .fromBitmap(resizeMapIcons(MarkerIconFactory.getIcon(activity, colorName), 50, 50));
+        marker.setIcon(savedMarkerIcons);
+
+        return marker;
     }
 
     public void setMarkersVisible(boolean isVisible, List<Marker> markers) {
@@ -299,7 +304,6 @@ public class MapProviderImpl implements MapProvider, ResultCallback {
 
     public void removeMarker(Marker marker) {
         marker.remove();
-        marker = null;
     }
 
     private Bitmap resizeMapIcons(int icon, int widthDp, int heightDp) {

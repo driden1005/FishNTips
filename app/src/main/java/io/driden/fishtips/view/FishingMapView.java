@@ -8,7 +8,7 @@ import me.panavtec.threaddecoratedview.views.qualifiers.ThreadDecoratedView;
 @ThreadDecoratedView
 public interface FishingMapView extends BaseView {
 
-    void addBottomSheetContents(LatLng latLng, FishingData[] dataArray);
+    void addBottomSheetContents(final LatLng latLng, final FishingData[] dataArra, boolean isNew);
 
     void setLoadingBottom(boolean isLoading);
 

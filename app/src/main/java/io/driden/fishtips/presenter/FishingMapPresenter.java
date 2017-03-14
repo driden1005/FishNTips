@@ -33,8 +33,6 @@ public interface FishingMapPresenter<T> extends
 
     void addUnsavedMarker(LatLng latlng);
 
-    void removeUnsavedMarker(Marker marker, boolean isHidden);
-
     void connectService();
 
     void disconnectService();
@@ -55,7 +53,11 @@ public interface FishingMapPresenter<T> extends
 
     void saveMarker(LatLng latLng, FishingData[] fishingDatas);
 
-    void setSavedMarkersVisibility(boolean isVisible);
+    void removeSelectedMarker(Marker marker, boolean isHidden);
+
+    void removeSavedMarker(LatLng latLng);
 
     void getSavedFishingData(Marker marker);
+
+    void updateIconColors();
 }

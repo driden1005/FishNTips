@@ -7,6 +7,7 @@ import android.support.annotation.NonNull;
 import android.support.design.widget.CoordinatorLayout;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
+import android.support.v4.content.ContextCompat;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -142,9 +143,10 @@ public class FishingMapActivity extends BaseActivity implements FishingMapView
      *
      * @param latLng
      * @param dataArray
+     * @param isNew
      */
     @Override
-    public void addBottomSheetContents(final LatLng latLng, final FishingData[] dataArray) {
+    public void addBottomSheetContents(final LatLng latLng, final FishingData[] dataArray, boolean isNew) {
 
         ((ViewGroup) itemContainer).removeAllViews();
 
@@ -156,14 +158,17 @@ public class FishingMapActivity extends BaseActivity implements FishingMapView
             bottomItemView.setData(data);
 
             ((ViewGroup) itemContainer).addView(bottomItemView, i);
-
+        }
+        // if the marker is new one, the click event is for saving contents.
+        if (isNew) {
+            Animation fabForward = AnimationUtils.loadAnimation(getApplicationContext(), R.anim.fab_forward);
+            fabSaveBtn.startAnimation(fabForward);
+            // Save the current marker.
+            fabSaveBtn.setOnClickListener(v -> presenter.saveMarker(latLng, dataArray));
+        } else {
+            fabSaveBtn.setOnClickListener(v -> presenter.removeSavedMarker(latLng));
         }
 
-        Animation fabForward = AnimationUtils.loadAnimation(getApplicationContext(), R.anim.fab_forward);
-
-        fabSaveBtn.startAnimation(fabForward);
-        // Save the current marker.
-        fabSaveBtn.setOnClickListener(v -> presenter.saveMarker(latLng, dataArray));
     }
 
     /**
@@ -231,6 +236,7 @@ public class FishingMapActivity extends BaseActivity implements FishingMapView
     @Override
     protected void onResume() {
         presenter.startLocationUpdate();
+//        presenter.updateIconColors();
         super.onResume();
     }
 
@@ -263,7 +269,6 @@ public class FishingMapActivity extends BaseActivity implements FishingMapView
         // GoogleMap
         presenter.setGoogleMapConfiguration(googleMap);
         setGoogleMapListeners(googleMap);
-        presenter.setSavedMarkersVisibility(true);
     }
 
     @Override
@@ -274,14 +279,17 @@ public class FishingMapActivity extends BaseActivity implements FishingMapView
     // fetch data, open the bottomsheet, and add a maker
     @Override
     public void onMapLongClick(LatLng latLng) {
+        fabSaveBtn.setImageDrawable(ContextCompat.getDrawable(this, R.drawable.ic_clear_white_24dp));
         presenter.addUnsavedMarker(latLng);
     }
 
     @Override
     public boolean onMarkerClick(Marker marker) {
         if (marker.getTag() == null) {
-            presenter.removeUnsavedMarker(marker, true);
+            fabSaveBtn.setImageDrawable(ContextCompat.getDrawable(this, R.drawable.ic_clear_white_24dp));
+            presenter.removeSelectedMarker(marker, true);
         } else {
+            fabSaveBtn.setImageDrawable(ContextCompat.getDrawable(this, R.drawable.ic_cancel_white_24dp));
             presenter.getSavedFishingData(marker);
         }
         return false;
@@ -290,8 +298,6 @@ public class FishingMapActivity extends BaseActivity implements FishingMapView
     @Override
     public void onMapLoaded() {
         presenter.getSavedMarkers();
-        presenter.setSavedMarkersVisibility(true);
-
     }
 
     @Override
