@@ -15,7 +15,7 @@ public interface FishingMapPresenter<T> extends
         GoogleApiClient.OnConnectionFailedListener,
         LocationListener {
 
-    void initGoogleApiClient();
+    void setGoogleApiClient();
 
     void setLocationRequest();
 

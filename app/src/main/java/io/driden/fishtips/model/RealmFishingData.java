@@ -30,7 +30,7 @@ public class RealmFishingData extends RealmObject {
     private double lat;
     private double lng;
     @Index
-    private long milisec;
+    private long miliSec;
 
     public RealmFishingData() {
 
@@ -77,12 +77,12 @@ public class RealmFishingData extends RealmObject {
         return sb.toString();
     }
 
-    public long getMilisec() {
-        return milisec;
+    public long getMiliSec() {
+        return miliSec;
     }
 
-    public void setMilisec(long milisec) {
-        this.milisec = milisec;
+    public void setMiliSec(long miliSec) {
+        this.miliSec = miliSec;
     }
 
     public double getLat() {

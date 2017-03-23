@@ -8,10 +8,6 @@ import retrofit2.http.GET;
 import retrofit2.http.POST;
 import retrofit2.http.Query;
 
-/**
- * Created by driden on 3/02/2017.
- */
-
 public interface TestAPI {
     @FormUrlEncoded
     @POST("/cgi-bin/worlddata.cgi")

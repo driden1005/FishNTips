@@ -12,7 +12,7 @@ public class RealmLatLng extends RealmObject {
     private double lng;
     @Index
     @PrimaryKey
-    private long milisec;
+    private long miliSec;
 
     public RealmLatLng() {
 
@@ -21,15 +21,15 @@ public class RealmLatLng extends RealmObject {
     public RealmLatLng(FishingData[] datas) {
         this.lat = datas[0].getLat();
         this.lng = datas[0].getLng();
-        this.milisec = new Date().getTime();
+        this.miliSec = new Date().getTime();
     }
 
-    public long getMilisec() {
-        return milisec;
+    public long getMiliSec() {
+        return miliSec;
     }
 
-    public void setMilisec(long milisec) {
-        this.milisec = milisec;
+    public void setMiliSec(long miliSec) {
+        this.miliSec = miliSec;
     }
 
     public double getLat() {

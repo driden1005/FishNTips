@@ -93,7 +93,7 @@ public class FishingMapActivity extends BaseActivity implements FishingMapView
         presenter.attachView(ViewInjector.inject(this, threadSpec));
         // BottomSheet
         presenter.setBottomSheetBehavior(bottomSheet);
-        presenter.initGoogleApiClient();
+        presenter.setGoogleApiClient();
         presenter.setLocationRequest();
     }
 

@@ -28,16 +28,12 @@ import com.google.android.gms.maps.Projection;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.TimeZone;
 import java.util.concurrent.ExecutorService;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -49,7 +45,9 @@ import io.driden.fishtips.model.FishingData;
 import io.driden.fishtips.model.FishingDataArrayParcelable;
 import io.driden.fishtips.model.RealmFishingData;
 import io.driden.fishtips.model.RealmLatLng;
+import io.driden.fishtips.provider.MapProvider;
 import io.driden.fishtips.provider.MapProviderImpl;
+import io.driden.fishtips.provider.MarkerProvider;
 import io.driden.fishtips.service.NetworkService;
 import io.driden.fishtips.service.NetworkServiceInterface;
 import io.driden.fishtips.service.ServiceInterface;
@@ -74,7 +72,9 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
     @Inject
     Realm realm;
 
-    private MapProviderImpl mapProvider;
+    private MarkerProvider markerProvider;
+
+    private MapProvider mapProvider;
 
     private NetworkServiceInterface networkService;
 
@@ -137,8 +137,8 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
      * instantiate the Google API client.
      */
     @Override
-    public void initGoogleApiClient() {
-        mapProvider = MapProviderImpl.getInstance(activity);
+    public void setGoogleApiClient() {
+        mapProvider = new MapProviderImpl(activity);
         // Set Location API, Location Request
         if (CommonUtils.checkPlayService(activity.getApplicationContext())) {
             // Google API
@@ -146,8 +146,14 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
             // PlayService is enabled, then it has the api client object.
             googleApiClient = mapProvider.getGoogleApiClient();
         } else {
-            Log.d(TAG, "initGoogleApiClient: No Google Play Service found.");
+            Log.d(TAG, "setGoogleApiClient: No Google Play Service found.");
         }
+
+        setMarkerProvider(realm);
+    }
+
+    private void setMarkerProvider(Realm realm) {
+        markerProvider = new MarkerProvider(realm);
     }
 
     /**
@@ -155,7 +161,6 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
      */
     @Override
     public void setLocationRequest() {
-        // Location Request
         mapProvider.setLocationRequest(10000, 5000, LocationRequest.PRIORITY_HIGH_ACCURACY, 20);
     }
 
@@ -177,30 +182,7 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
      */
     @Override
     public void getSavedMarkers() {
-        RealmResults<RealmLatLng> savedLatLngs = realm.where(RealmLatLng.class).findAll();
-
-        Date currentDate = new Date();
-        SimpleDateFormat sdf = new SimpleDateFormat("EEE dd MMM");
-        String currentDateStr = sdf.format(currentDate);
-
-        savedMarkers = new ArrayList<>();
-
-        Observable.range(0, savedLatLngs.size())
-                .subscribe(i -> {
-                    RealmFishingData data =
-                            realm.where(RealmFishingData.class)
-                                    .equalTo("date", currentDateStr)
-                                    .equalTo("milisec", savedLatLngs.get(i).getMilisec())
-                                    .findFirst();
-                    Marker marker = getColoredMarker(currentDate, savedLatLngs.get(i), data);
-                    marker.setTag(i);
-                    savedMarkers.add(marker);
-                }, e -> {
-                    Log.d(TAG, "getSavedMarkers: " + e.getMessage());
-                    if (!savedMarkers.isEmpty()) {
-                        setMarkersVisibility(savedMarkers, true);
-                    }
-                }, () -> setMarkersVisibility(savedMarkers, true));
+        savedMarkers = markerProvider.getSavedMarkers(mapProvider);
     }
 
     /**
@@ -211,18 +193,16 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
         SimpleDateFormat sdf = new SimpleDateFormat("EEE dd MMM");
         String currentDateStr = sdf.format(currentDate);
 
-        Observable.range(0, savedLatLngs.size())
-                .subscribe(i -> {
-                            RealmFishingData data =
-                                    realm.where(RealmFishingData.class)
-                                            .equalTo("date", currentDateStr)
-                                            .equalTo("milisec", savedLatLngs.get(i).getMilisec())
-                                            .findFirst();
+        Observable.range(0, savedLatLngs.size()).subscribe(i -> {
+                    RealmFishingData data =
+                            realm.where(RealmFishingData.class)
+                                    .equalTo("date", currentDateStr)
+                                    .equalTo("milisec", savedLatLngs.get(i).getMiliSec())
+                                    .findFirst();
 
-                            checkMarkerIconColors(savedMarkers.get(i), currentDate, data);
-
-                        }, e -> Log.e(TAG, "updateIconColors: " + e.getMessage()),
-                        () -> view.showToast("Updating markers has been completed."));
+                    getMarkerIconColors(savedMarkers.get(i), currentDate, data);
+                }, e -> Log.e(TAG, "updateIconColors: " + e.getMessage()),
+                () -> view.showToast("Updating markers has been completed."));
     }
 
     /**
@@ -233,25 +213,8 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
      * @param data
      * @return
      */
-    private Marker checkMarkerIconColors(Marker marker, Date currentDate, RealmFishingData data) {
-        if (data != null) {
-
-            if (isTheTimeIncluded(currentDate, data.getMajor1())) {
-                marker = mapProvider.changeIcon(marker, data.getMaj1color());
-            } else if (isTheTimeIncluded(currentDate, data.getMajor2())) {
-                marker = mapProvider.changeIcon(marker, data.getMaj2color());
-            } else if (isTheTimeIncluded(currentDate, data.getMinor1())) {
-                marker = mapProvider.changeIcon(marker, data.getMin1color());
-            } else if (isTheTimeIncluded(currentDate, data.getMinor2())) {
-                marker = mapProvider.changeIcon(marker, data.getMin2color());
-            } else {
-                marker = mapProvider.changeIcon(marker, "");
-            }
-        } else {
-            marker = mapProvider.changeIcon(marker, "");
-        }
-
-        return marker;
+    private Marker getMarkerIconColors(Marker marker, Date currentDate, RealmFishingData data) {
+        return markerProvider.getMarkerIconColors(mapProvider, marker, currentDate, data);
     }
 
     /**
@@ -263,84 +226,7 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
      * @return
      */
     private Marker getColoredMarker(Date currentDate, RealmLatLng realmlatLng, RealmFishingData data) {
-
-        Marker marker;
-
-        SimpleDateFormat sdf = new SimpleDateFormat("EEE dd MMM");
-        String currentDateStr = sdf.format(currentDate);
-
-        if (data != null && currentDateStr.equals(data.getDate())) {
-
-            Log.d(TAG, "getColoredMarker: " + currentDateStr + "___" + data.getDate());
-
-            if (isTheTimeIncluded(currentDate, data.getMajor1())) {
-                marker = mapProvider.getMarker(realmlatLng, data.getMaj1color());
-            } else if (isTheTimeIncluded(currentDate, data.getMajor2())) {
-                marker = mapProvider.getMarker(realmlatLng, data.getMaj2color());
-            } else if (isTheTimeIncluded(currentDate, data.getMinor1())) {
-                marker = mapProvider.getMarker(realmlatLng, data.getMin1color());
-            } else if (isTheTimeIncluded(currentDate, data.getMinor2())) {
-                marker = mapProvider.getMarker(realmlatLng, data.getMin2color());
-            } else {
-                marker = mapProvider.getMarker(realmlatLng, "");
-            }
-
-        } else {
-            marker = mapProvider.getMarker(realmlatLng, "");
-        }
-
-        return marker;
-    }
-
-    /**
-     * Get true or false if current time is in the major or minor bite time period.
-     * this code is terribly ugly.... need to fix it later :(
-     *
-     * @param currentDate
-     * @param dateRange
-     * @return
-     */
-    private boolean isTheTimeIncluded(Date currentDate, String dateRange) {
-
-        if (dateRange.contains("--:--")) {
-            return false;
-        }
-
-        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm");
-
-        String currentTimeStr = sdf.format(currentDate);
-
-        final String regex = "[0-9]{2}:[0-9]{2}";
-        final Pattern pattern = Pattern.compile(regex);
-        final Matcher matcher = pattern.matcher(dateRange);
-
-        Date currentTime = null;
-        try {
-            currentTime = sdf.parse(currentTimeStr);
-        } catch (ParseException e) {
-            e.printStackTrace();
-        }
-
-        if (currentTime == null) {
-            return false;
-        }
-
-        Date[] times = new Date[2];
-
-        int count = 0;
-        while (matcher.find()) {
-            try {
-                times[count++] = sdf.parse(matcher.group(0));
-            } catch (ParseException e) {
-                e.printStackTrace();
-            }
-        }
-
-        if ((times[0].getTime() <= currentTime.getTime()) && (times[1].getTime() >= currentTime.getTime())) {
-            return true;
-        }
-
-        return false;
+        return markerProvider.getColoredMarker(mapProvider, currentDate, realmlatLng, data);
     }
 
     /**
@@ -399,7 +285,7 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
         // Convert the array to the Realm collection.
         Arrays.asList(dataArray).stream()
                 .map(fishingData -> new RealmFishingData(fishingData))
-                .peek(realmFishingData -> realmFishingData.setMilisec(latLng.getMilisec()))
+                .peek(realmFishingData -> realmFishingData.setMiliSec(latLng.getMiliSec()))
                 .forEach(realmFishingData -> dataList.add(realmFishingData));
 
         realm.beginTransaction();
@@ -408,15 +294,6 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
         realm.commitTransaction();
 
         return dataList;
-    }
-
-    /**
-     * set the saved markers' visibility
-     *
-     * @param isVisible
-     */
-    private void setMarkersVisibility(List<Marker> markers, boolean isVisible) {
-        mapProvider.setMarkersVisible(true, markers);
     }
 
     /**
@@ -577,30 +454,25 @@ public class FishingMapPresenterImpl implements FishingMapPresenter<FishingMapVi
     @Override
     public void removeSavedMarker(LatLng latLng) {
 
-        Observable.just(latLng).observeOn().subscribe(ll -> {
-            Marker selectedMarker = savedMarkers.stream()
-                    .filter(marker -> marker.getPosition().latitude == ll.latitude && marker.getPosition().longitude == ll.longitude)
-                    .findFirst().get();
-            // remove the marker from the marker list
-            savedMarkers.remove(selectedMarker);
-            // remove the marker object on the screen
-            removeSelectedMarker(selectedMarker, true);
-            // remove the marker relating fishing data from the realm DB.
-            realm.beginTransaction();
-            // delete ReamlmLatLng
-            realm.where(RealmLatLng.class)
-                    .equalTo("lat", ll.latitude).equalTo("lng", ll.longitude)
-                    .findAll().deleteAllFromRealm();
-            // delete RealmFishingData
-            realm.where(RealmFishingData.class)
-                    .equalTo("lat", ll.latitude).equalTo("lng", ll.longitude)
-                    .findAll().deleteAllFromRealm();
-            realm.commitTransaction();
-        }, e -> {
-        }, () -> {
-            rearrangeMarkers(savedMarkers);
-            view.showToast("The marker has been removed.");
-        });
+        Marker selectedMarker = savedMarkers.stream()
+                .filter(marker -> marker.getPosition().latitude == latLng.latitude && marker.getPosition().longitude == latLng.longitude)
+                .findFirst().get();
+
+        // remove the marker from the marker list
+        savedMarkers.remove(selectedMarker);
+        removeSelectedMarker(selectedMarker, true);
+
+        realm.beginTransaction();
+        realm.where(RealmLatLng.class)
+                .equalTo("lat", latLng.latitude).equalTo("lng", latLng.longitude)
+                .findAll().deleteAllFromRealm();
+        // delete RealmFishingData
+        realm.where(RealmFishingData.class)
+                .equalTo("lat", latLng.latitude).equalTo("lng", latLng.longitude)
+                .findAll().deleteAllFromRealm();
+        realm.commitTransaction();
+
+        rearrangeMarkers(savedMarkers);
     }
 
     /**

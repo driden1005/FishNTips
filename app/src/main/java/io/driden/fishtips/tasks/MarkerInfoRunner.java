@@ -9,7 +9,6 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
-import java.io.IOException;
 import java.lang.reflect.Type;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -28,7 +27,6 @@ import io.driden.fishtips.model.FishingDataArrayParcelable;
 import io.driden.fishtips.model.MarkersTag;
 import io.driden.fishtips.provider.HttpProvider;
 import io.driden.fishtips.service.ServiceInterface;
-import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.ResponseBody;
@@ -84,22 +82,19 @@ public class MarkerInfoRunner implements Runnable {
             Log.d(TAG, "run: " + cookieStr);
             OkHttpClient cl = new HttpProvider.ClientBuilder()
                     .setDefaultTimeOuts()
-                    .addInterceptor(new Interceptor() {
-                        @Override
-                        public okhttp3.Response intercept(Chain chain) throws IOException {
-                            Request original = chain.request();
+                    .addInterceptor(chain -> {
+                        Request original = chain.request();
 
-                            Request request = original.newBuilder()
-                                    .header("User-Agent", "Android")
-                                    .header("Cookie", cookieStr)
-                                    .header("Referer", "https://www.bitetimes.com/")
-                                    .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
-                                    .header("Accept-Language", Locale.getDefault().getLanguage())
-                                    .method(original.method(), original.body())
-                                    .build();
+                        Request request = original.newBuilder()
+                                .header("User-Agent", "Android")
+                                .header("Cookie", cookieStr)
+                                .header("Referer", "https://www.bitetimes.com/")
+                                .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
+                                .header("Accept-Language", Locale.getDefault().getLanguage())
+                                .method(original.method(), original.body())
+                                .build();
 
-                            return chain.proceed(request);
-                        }
+                        return chain.proceed(request);
                     })
                     .build();
 
@@ -131,8 +126,6 @@ public class MarkerInfoRunner implements Runnable {
 
             Response<ResponseBody> dataResponse = dataCall.execute();
             String result = dataResponse.body().string();
-
-//            Log.d(TAG, "run: "+result);
 
             Gson gson = new Gson();
             Type dataType = new TypeToken<HashMap<String, FishingData>>() {

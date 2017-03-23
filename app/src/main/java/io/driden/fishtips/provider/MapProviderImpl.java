@@ -44,23 +44,9 @@ import io.driden.fishtips.util.MarkerIconFactory;
 
 public class MapProviderImpl implements MapProvider, ResultCallback {
 
-    public static final int REQUEST_CODE_LOCATION_UPDATE = 12321;
-    public static final int RESULT_CODE_LAST_LOCATION = 45832;
-    public static final int RESULT_CODE_REQUEST_LOCATION = 45833;
-    public static final int RESULT_CODE_LOCATION_PERMISSION = 45834;
-
-    static final float MAX_ZOOM = 17f;
-    static final float MIN_ZOOM = 5.5f;
-
-    public static LatLngBounds LATLNG_NEW_ZEALAND = new LatLngBounds(new LatLng(-47.750526, 165.110728), new LatLng(-33.880332, 178.968273));
-    private static MapProviderImpl instance;
-
     private final String LOCATION_PERMISSION = Manifest.permission.ACCESS_FINE_LOCATION;
-    private final String TAG = getClass().getCanonicalName();
+    private final String TAG = getClass().getSimpleName();
 
-    public LatLng WELLINGTON = new LatLng(-41.285257, 174.781817);
-    public LatLng TEST_LOCATION_1 = new LatLng(-42.554966, 173.662141);
-    public LatLng TEST_LOCATION_2 = new LatLng(-37.293347, 176.077334);
     @Inject
     DisplayMetrics metrics;
     private LatLng AUCKLAND = new LatLng(-36.839472, 174.770025);
@@ -69,20 +55,9 @@ public class MapProviderImpl implements MapProvider, ResultCallback {
     private GoogleMap googleMap;
     private Activity activity;
 
-    private MapProviderImpl(Activity activity) {
+    public MapProviderImpl(Activity activity) {
         this.activity = activity;
         App.getAppComponent().inject(this);
-    }
-
-    public static MapProviderImpl getInstance(Activity activity) {
-        if (instance == null) {
-            synchronized (MapProviderImpl.class) {
-                if (instance == null) {
-                    instance = new MapProviderImpl(activity);
-                }
-            }
-        }
-        return instance;
     }
 
     public Projection getProjection() {
@@ -99,7 +74,8 @@ public class MapProviderImpl implements MapProvider, ResultCallback {
         return new GoogleMapBuilder(googleMap);
     }
 
-    public synchronized void initGoogleApiClient(
+    @Override
+    public void initGoogleApiClient(
             GoogleApiClient.ConnectionCallbacks connectionCallbacks,
             GoogleApiClient.OnConnectionFailedListener failedListener) {
         googleApiClient = new GoogleApiClient.Builder(activity)
@@ -115,6 +91,7 @@ public class MapProviderImpl implements MapProvider, ResultCallback {
      * @param colorName
      * @return
      */
+    @Override
     public Marker getMarker(RealmLatLng realmLatLng, @NonNull String colorName) {
         if (realmLatLng != null) {
             Marker savedMarker = getMarkerObj(new LatLng(realmLatLng.getLat(), realmLatLng.getLng()), false);
@@ -133,6 +110,7 @@ public class MapProviderImpl implements MapProvider, ResultCallback {
         return marker;
     }
 
+    @Override
     public void setMarkersVisible(boolean isVisible, List<Marker> markers) {
         if (markers == null || markers.isEmpty()) {
             return;
@@ -142,10 +120,12 @@ public class MapProviderImpl implements MapProvider, ResultCallback {
 
     }
 
+    @Override
     public GoogleMap getGoogleMap() {
         return googleMap;
     }
 
+    @Override
     public GoogleApiClient getGoogleApiClient() {
         return googleApiClient;
     }
@@ -154,10 +134,12 @@ public class MapProviderImpl implements MapProvider, ResultCallback {
         return locationRequest;
     }
 
+    @Override
     public void setMapBoundary(LatLngBounds latLngBounds) {
         googleMap.setLatLngBoundsForCameraTarget(latLngBounds);
     }
 
+    @Override
     public void animateCamera(LatLng latLng) {
         googleMap.animateCamera(CameraUpdateFactory.newLatLng(latLng));
     }
@@ -185,6 +167,7 @@ public class MapProviderImpl implements MapProvider, ResultCallback {
         googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, zoom));
     }
 
+    @Override
     public void setLocationRequest(long updateInterval, long fastestInterval,
                                    int priority, float smallestDisplacement) {
         locationRequest = new LocationRequest().setInterval(updateInterval)
@@ -194,6 +177,7 @@ public class MapProviderImpl implements MapProvider, ResultCallback {
         setLocationSettingRequest();
     }
 
+    @Override
     public void startLocationUpdate(LocationListener listener) {
         Log.e(TAG, "startLocationUpdate");
         if (locationRequest == null || googleApiClient == null || !googleApiClient.isConnected()) {
@@ -207,12 +191,14 @@ public class MapProviderImpl implements MapProvider, ResultCallback {
         LocationServices.FusedLocationApi.requestLocationUpdates(googleApiClient, locationRequest, listener);
     }
 
+    @Override
     public void stopLocationUpdate(LocationListener listener) {
         if (googleApiClient != null && googleApiClient.isConnected()) {
             LocationServices.FusedLocationApi.removeLocationUpdates(googleApiClient, listener);
         }
     }
 
+    @Override
     public void moveLastLocation() {
         if (CommonUtils.checkPermissionGranted(activity, LOCATION_PERMISSION)) {
 
@@ -230,6 +216,7 @@ public class MapProviderImpl implements MapProvider, ResultCallback {
 
     }
 
+    @Override
     public Location getLastLocation() {
         if (ActivityCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             CommonUtils.requestUsePermissions(activity, new String[]{LOCATION_PERMISSION}, RESULT_CODE_LAST_LOCATION);
@@ -280,6 +267,7 @@ public class MapProviderImpl implements MapProvider, ResultCallback {
      * @param latlng
      * @return
      */
+    @Override
     public Marker addUnsavedMarker(LatLng latlng) {
         return getMarkerObj(latlng, true);
     }
@@ -298,10 +286,12 @@ public class MapProviderImpl implements MapProvider, ResultCallback {
                 .visible(isVisible));
     }
 
+    @Override
     public void setMapPadding(int i1, int i2, int i3, int i4) {
         googleMap.setPadding(i1, i2, i3, i4);
     }
 
+    @Override
     public void removeMarker(Marker marker) {
         marker.remove();
     }
